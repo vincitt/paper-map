@@ -1002,13 +1002,18 @@ function poly(shape,cx,cy,r){
   return `<polygon points="${pts.join(" ")}"/>`;
 }
 function provFor(p,field,value){return (p.tags_provenance||[]).find(t=>t.field===field&&t.value===value);}
+// What the "Open PDF" button opens: an http(s) pdf if present, else fall back to the paper's url.
+// Returns null when nothing is openable (so the button stays disabled rather than dead).
+function isHttp(u){return typeof u==="string"&&/^https?:\/\//i.test(u);}
+function pdfHref(p){return isHttp(p.pdf)?p.pdf:(isHttp(p.url)?p.url:null);}
 function panelHTML(){
   const p=S.corpus.find(x=>x.id===S.selectedId);if(!p)return "";
   const idx=sortPapers(filteredCorpus()).findIndex(x=>x.id===p.id);
   const list=sortPapers(filteredCorpus());
   const v=S.derived.val[p.id]||{warns:[]};
   const editable=S.mode==="edit"||S.mode==="demo"||S.mode==="memory";
-  const pdfOk=p.pdf&&(p.pdf.startsWith("http")||S.mode==="edit");
+  const href=pdfHref(p);
+  const pdfLabel=isHttp(p.pdf)?"Open PDF":"Open link"; // honest label when falling back to url
   return `<div class="scrim" data-act="closepanel"></div><div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="${esc(p.title)}">
     <div class="phead">
       <button class="navbtn" data-act="prev" aria-label="Previous paper" ${idx<=0?"disabled":""}>${ICON.arrowL}</button>
@@ -1023,7 +1028,7 @@ function panelHTML(){
       <div class="authorline">${p.authors.map(a=>{const A=S.derived.authors[a.name]||{};return `<span class="authorchip"><span class="ad ${A.internal?"int":"ext"}"></span>${esc(a.name)}</span>`;}).join("")}</div>
       <div class="metaline tnum">${p.year||"—"} · ${esc(p.venue||"")}${p.doi?` · doi:${esc(p.doi)}`:""}</div>
       <div class="pactions">
-        <button class="btn sm" data-act="pdf" ${pdfOk?"":"disabled"}>${ICON.ext} Open PDF</button>
+        <button class="btn sm" data-act="pdf" ${href?"":"disabled"}${href?` title="${esc(href)}"`:""}>${ICON.ext} ${pdfLabel}</button>
         ${p.doi?`<button class="btn sm" data-act="doi">${ICON.ext} DOI</button>`:""}
         <button class="btn sm" data-act="showmap">${ICON.methods} Show in Map</button>
       </div>
@@ -1724,7 +1729,7 @@ function onClick(e){
     case "markreviewed":if(p)setStatus(p,"verified");break;
     case "showmap":S.selectedId=null;S.view="map";render();break;
     case "doi":if(p&&p.doi)window.open("https://doi.org/"+p.doi,"_blank");break;
-    case "pdf":if(p&&p.pdf&&p.pdf.startsWith("http"))window.open(p.pdf,"_blank");break;
+    case "pdf":{const u=p&&pdfHref(p);if(u)window.open(u,"_blank","noopener");break;}
     case "rings":S.showRings=!S.showRings;render();break;
     case "external":S.showExternal=!S.showExternal;render();break;
     case "togglelegend":S.legendCollapsed=!S.legendCollapsed;render();break;
