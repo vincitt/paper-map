@@ -43,7 +43,7 @@ If you internalize those four, the rest is detail.
 ## Repo layout
 
 ```
-index.html              # THE app — CSS + JS + fonts + demo data, all inlined (~1900 lines)
+index.html              # THE app — CSS + JS + fonts + demo data, all inlined (~2,070 lines)
 index.json              # build artifact: the demo corpus as one manifest (served/browse mode reads this)
 entities.json           # build artifact: the demo entities as one manifest
 papermap.config.json    # map-wide settings: title, vocabularies, facets, palette, focal authors
@@ -63,7 +63,7 @@ DESIGN_SPEC.md          # local-only design rationale (gitignored, not published
 
 ## Anatomy of `index.html`
 
-The file is short in *lines* (~1900) but large in *bytes* (~900 KB) because two
+The file is short in *lines* (~2,070) but large in *bytes* (~900 KB) because two
 things are inlined as giant single-line literals: the **base64 fonts** (in
 `<style>`) and the **demo corpus** (`DEMO`, `CFG_DEMO`, `ENT_DEMO` consts).
 
@@ -72,9 +72,9 @@ Top-level structure:
 | Lines (approx) | Region | What lives there |
 |---|---|---|
 | `1–12` | `<head>` meta | charset, viewport, title |
-| `13–425` | `<style>` | fonts, design tokens, theme, every component's CSS |
-| `427–429` | `<body>` | a single `<div id="root">` — the entire UI mounts here |
-| `430–1929` | `<script>` | the whole application |
+| `13–513` | `<style>` | fonts, design tokens, theme, every component's CSS |
+| `515–516` | `<body>` | a single `<div id="root">` — the entire UI mounts here |
+| `518–2066` | `<script>` | the whole application |
 
 The script is organized into clearly-bannered sections. **Navigate by the
 banners, not by line number** — search for `/* ===== ` or `/* ====`. Line numbers
@@ -83,26 +83,24 @@ text is stable.
 
 | Banner | ~Line | Responsibility |
 |---|---|---|
-| Inlined demo corpus | 432 | `DEMO`, `CFG_DEMO`, `ENT_DEMO` — offline first-run data (a hand-synced copy of the `*.json` manifests) |
-| Utilities | 436 | `$`, `esc`, `safeUrl`, `darken`, colour scales, `ICON`/`LOGO` SVGs |
-| YAML front-matter parser | 477 | `parseFrontMatter`, `parseScalar`, `parseFlowList`, `normalizePaper` — **data in** |
-| Serialize back to markdown | 585 | `serializePaper`, `serializeEntity`, `buildIndex` — **data out** |
-| State | 636 | the `S` atom (and `ENT_DEMO`) |
-| Derive | 647 | `deriveCorpus` — recompute everything cached from `S.corpus` |
-| Facet helpers | 711 | `facetDefs`, `entityFacets`, `facetVals`, … (config-driven facets) |
-| Mode badge / Filtering | 723 | `modeChip`, `saveRead`, `filteredCorpus`, `sortPapers` |
-| Render: shell | 765 | `render`, `viewHTML`, `subheader`, `tab` — the top-level redraw |
-| Library / Detail panel / Review | 927 | `libraryHTML`, `rowHTML`, `panelHTML`, `reviewHTML`, kanban |
-| Map | 1101 | `renderMap` + the three lenses: `renderFacet`, `renderTimeline`, `renderPeople` |
-| Welcome | 1317 | `welcomeHTML`, and the LLM enrichment `PROMPT` |
-| BibTeX / RIS import | 1369 | `parseBibtex`, `parseRis`, `parseRefs`, `importCommit` |
-| Recent maps | 1477 | IndexedDB helpers `idbGet`/`idbSet`, `saveRecent`, `openRecent` |
-| File-format reference | 1508 | `helpHTML`, `formatHTML` — the in-app "How the files work" docs |
-| Runtime: load modes | 1624 | `loadDemo`, `loadFromManifest`, `pickFolder`, `loadFromDir` |
-| Save | 1682 | `scheduleSave`/`doSave` (papers), `scheduleSaveEntity`/`doSaveEntity` |
-| Mutations | 1726 | `mutate`, `cycleStatus`, `setStatus` |
-| Events | 1731 | `onClick` (delegated dispatch) + all document-level listeners + keyboard |
-| Boot | 1918 | the IIFE that detects mode, restores theme, and does first render |
+| Inlined demo corpus | 520 | `DEMO`, `CFG_DEMO` — offline first-run paper + config data (a hand-synced copy of the `*.json` manifests; `ENT_DEMO` sits with the `S` atom under **State**) |
+| Utilities | 524 | `$`, `esc`, `safeUrl`, `darken`, colour scales, `ICON`/`LOGO` SVGs |
+| YAML front-matter parser | 566 | `parseFrontMatter`, `parseScalar`, `parseFlowList`, `normalizePaper`, `KNOWN_FM`/`STMAP` — **data in** |
+| serialize back to markdown | 674 | `serializePaper`, `buildIndex` — **data out** |
+| State | 725 | `ENT_DEMO` + the `S` atom |
+| Derive | 736 | `deriveCorpus` — recompute everything cached from `S.corpus`; a `/* ---- facet helpers ---- */` sub-banner (`facetDefs`, `entityFacets`, `facetVals`, …) follows |
+| Mode badge / Filtering | 812 / 827 | `modeChip`, `saveRead`, `filteredCorpus`, `sortPapers` |
+| Render: shell | 854 | `render`, `manageDialogFocus`, `subheader`, `tab`, `viewHTML` — the top-level redraw |
+| Library / Detail panel / Review | 1016 / 1080 / 1160 | `libraryHTML`, `rowHTML`, `panelHTML`, `reviewHTML`, kanban |
+| Map | 1190 | `renderMap` + the three lenses: `renderFacet`, `renderTimeline`, `renderPeople` |
+| Welcome | 1452 | the LLM enrichment `PROMPT` and `helpHTML` (the **"How papers get in"** panel) |
+| BibTeX / RIS import | 1504 | `parseBibtex`, `parseRis`, `parseRefs`, `importHTML`, `importCommit`, `modalHTML` |
+| Recent maps | 1612 | IndexedDB helpers `idbGet`/`idbSet`, `saveRecent`, `openRecent` |
+| File-format reference | 1643 | `formatHTML` (the in-app **"How the files work"** docs) and `welcomeHTML` (the welcome screen) |
+| Runtime: load modes | 1759 | `loadDemo`, `loadFromManifest`, `pickFolder`, `loadFromDir`, then the **save loop** — `scheduleSave`/`doSave` for papers and a `/* ---- entity editing ---- */` sub-banner (`serializeEntity`, `scheduleSaveEntity`/`doSaveEntity`) |
+| Mutations | 1861 | `mutate`, `cycleStatus`, `setStatus` |
+| Events | 1866 | `onClick` (delegated dispatch) + all document-level listeners + keyboard |
+| Boot | 2055 | the IIFE that detects mode, restores theme, and does first render |
 
 ---
 

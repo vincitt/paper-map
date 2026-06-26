@@ -4,7 +4,7 @@
 
 Paper Map is a free, open-source web app — shipped as a *single HTML file with zero dependencies* — for visualizing and navigating a bounded collection of academic papers (a lab's output, a reading list, a subfield, a syllabus) across three lenses:
 
-- **Methods & modality** — what techniques recur, and where
+- **Methods & modality** — which techniques recur, and where they branch off
 - **Timeline / lineage** — how ideas descend over time
 - **People & collaboration** — who worked with whom
 
@@ -40,7 +40,7 @@ Just open the project's GitHub Pages URL. Nothing to install. (Published maps ar
 
 **A map is a folder.** Keep separate maps for separate things (e.g. one per project, lab, or reading list) — each is its own folder with its own `papers/`, `entities/`, and `papermap.config.json`. Click the **corpus title** in the header (or use the welcome screen) to switch between **Recent maps**, open a new folder, or load the demo. Recently-opened folders are remembered between sessions (in your browser, Chrome/Edge); switching back re-asks for folder permission.
 
-The **?** help panel and the map switcher both link to an in-app **"How the files work"** reference (folder layout, an annotated paper file, the field table, and the config format).
+The welcome screen and the map switcher both open an in-app **"How the files work"** reference (folder layout, an annotated paper file, the field table, and the config format).
 
 ## Edit locally
 
@@ -54,7 +54,7 @@ Editing uses the browser's File System Access API, so it needs a **Chromium brow
 
 Every paper is one Markdown file with YAML front-matter at `papers/<id>.md`. The **schema is the only contract** — create records however you like, all three ways produce identical files:
 
-- **Import from a reference manager** — export your Zotero / Mendeley / EndNote library as **BibTeX** (`.bib`) or **RIS** (`.ris`) and import it (welcome screen → *Import .bib / .ris*, or the **?** help panel). Each reference comes in as *Unverified* (title, authors, year, venue, DOI) and lands in the **Review** queue, ready to enrich. The fastest way to seed a corpus.
+- **Import from a reference manager** — export your Zotero / Mendeley / EndNote library as **BibTeX** (`.bib`) or **RIS** (`.ris`) and import it (welcome screen → *Import .bib / .ris*, or the **How papers get in** panel). Each reference comes in as *Unverified* (title, authors, year, venue, DOI) and lands in the **Review** queue, ready to enrich. The fastest way to seed a corpus.
 - **By hand** — copy an existing file in `papers/` and edit the fields.
 - **With any LLM** — paste a paper's text plus the enrichment prompt (the **?** help panel has a **Copy prompt** button) into Claude or any model; it returns a ready-to-save record. Every AI-suggested tag carries a **source quote** so you can verify it in seconds.
 - **With a script** — anything that writes the same YAML works.
@@ -80,7 +80,7 @@ status: unverified
 We study attention patterns that let transformers process long documents...
 ```
 
-Key fields: `id`, `title`, `authors`, `year` are required; `methods`/`modality` drive the Methods lens; `builds_on` (directed) drives the Timeline lineage; `see_also` is undirected; `status` is `unverified | verified | flagged` (the Review workflow; legacy `draft`/`reviewed`/`needs_fixing` are auto-migrated). Map-wide settings (title, controlled vocabularies, focal authors, palette) live in `papermap.config.json`. Full field reference: the in-app **How the files work** panel (open it from the **?** menu or the map switcher).
+Key fields: `id`, `title`, `authors`, `year` are required; `methods`/`modality` drive the Methods lens; `builds_on` (directed) drives the Timeline lineage; `see_also` is undirected; `status` is `unverified | verified | flagged` (the Review workflow; legacy `draft`/`reviewed`/`needs_fixing` are auto-migrated). Map-wide settings (title, controlled vocabularies, focal authors, palette) live in `papermap.config.json`. Full field reference: the in-app **How the files work** panel (open it from the welcome screen or the map switcher).
 
 ## Typed facets & entities (datasets, tasks, tools…)
 
