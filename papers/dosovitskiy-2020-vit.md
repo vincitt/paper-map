@@ -8,7 +8,7 @@ authors:
   - name: "Dirk Weissenborn"
   - name: "Xiaohua Zhai"
   - name: "Neil Houlsby"
-year: 2020
+year: 2021
 venue: "ICLR"
 url: "https://arxiv.org/abs/2010.11929"
 modality: "vision"

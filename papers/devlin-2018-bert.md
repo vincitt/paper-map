@@ -6,7 +6,7 @@ authors:
   - name: "Ming-Wei Chang"
   - name: "Kenton Lee"
   - name: "Kristina Toutanova"
-year: 2018
+year: 2019
 venue: "NAACL"
 url: "https://arxiv.org/abs/1810.04805"
 modality: "text"
