@@ -638,8 +638,6 @@ function render(){
     <div class="search"><span class="ico">${ICON.search}</span><input id="search" placeholder="Search papers, authors…" value="${esc(S.filters.search)}"><kbd>/</kbd></div>
     <div class="statusread">${saveRead()}<span>·</span><span class="tnum">${S.corpus.length} papers</span><span>·</span><span>◴ Offline</span></div>
     ${modeChip()}
-    ${S.mode!=="browse"?`<button class="iconbtn" data-act="settings" title="Settings" aria-label="Settings">${ICON.gear}</button>`:""}
-    <button class="iconbtn" data-act="help" title="Help" aria-label="Help">${ICON.help}</button>
   </header>
   ${subheader()}
   <main class="main" id="main" tabindex="-1">${viewHTML()}${S.selectedEntity?entityPanelHTML():""}</main>
