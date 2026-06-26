@@ -1,6 +1,7 @@
 ---
 id: sutskever-2014-seq2seq
 title: "Sequence to Sequence Learning with Neural Networks"
+label: "seq2seq"
 authors:
   - name: "Ilya Sutskever"
   - name: "Oriol Vinyals"

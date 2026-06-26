@@ -1,6 +1,7 @@
 ---
 id: devlin-2018-bert
 title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"
+label: "BERT"
 authors:
   - name: "Jacob Devlin"
   - name: "Ming-Wei Chang"

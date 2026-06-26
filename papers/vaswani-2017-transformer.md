@@ -1,6 +1,7 @@
 ---
 id: vaswani-2017-transformer
 title: "Attention Is All You Need"
+label: "Transformer"
 authors:
   - name: "Ashish Vaswani"
   - name: "Noam Shazeer"

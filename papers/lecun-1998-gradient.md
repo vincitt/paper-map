@@ -1,6 +1,7 @@
 ---
 id: lecun-1998-gradient
 title: "Gradient-Based Learning Applied to Document Recognition"
+label: "LeNet"
 authors:
   - name: "Yann LeCun"
   - name: "Léon Bottou"

@@ -1,6 +1,7 @@
 ---
 id: krizhevsky-2012-imagenet
 title: "ImageNet Classification with Deep Convolutional Neural Networks"
+label: "AlexNet"
 authors:
   - name: "Alex Krizhevsky"
   - name: "Ilya Sutskever"

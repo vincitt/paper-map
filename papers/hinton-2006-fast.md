@@ -1,6 +1,7 @@
 ---
 id: hinton-2006-fast
 title: "A Fast Learning Algorithm for Deep Belief Nets"
+label: "DBN"
 authors:
   - name: "Geoffrey Hinton"
   - name: "Simon Osindero"

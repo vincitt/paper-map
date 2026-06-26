@@ -1,6 +1,7 @@
 ---
 id: mikolov-2013-word2vec
 title: "Efficient Estimation of Word Representations in Vector Space"
+label: "word2vec"
 authors:
   - name: "Tomáš Mikolov"
   - name: "Kai Chen"
