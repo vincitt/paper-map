@@ -4,11 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Paper Map</title>
+<meta name="description" content="Map your own curated set of papers — methods, lineage, and people — offline, in plain Markdown files you own.">
+<meta name="theme-color" content="#cf7152">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Paper Map">
+<meta property="og:description" content="See the shape of a curated set of papers — methods, lineage, and people. Offline, file-based, no lock-in.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='8.5' fill='%23fff' stroke='%23cf7152' stroke-width='1.6'/%3E%3Cpath d='M10 1.5 A8.5 8.5 0 0 0 10 18.5 Z' fill='%23cf7152'/%3E%3C/svg%3E">
 <style>
 /* ============================ Design tokens (DESIGN_SPEC §0.9) ============================ */
 :root{
   --bg:#faf9f5; --bg-sunken:#f3f1ea; --surface:#ffffff; --hover:#fbfaf7; --active:#f6f3ec;
-  --ink:#1c1a17; --ink-2:#57534c; --ink-3:#78736a; --placeholder:#9c968b;
+  --ink:#1c1a17; --ink-2:#57534c; --ink-3:#6c675d; --placeholder:#8a8479;
   --border:#e9e6df; --border-strong:#d8d3c8; --border-light:#f0ede6;
   --accent:#cf7152; --accent-hover:#bd6244; --accent-active:#a8543a; --accent-soft:#fbeee7; --accent-soft-border:#f0d8cb; --accent-text:#a8543a;
   --draft-bg:#fdf6e9; --draft-text:#8a5a12; --draft-line:#d9a441;
@@ -33,6 +39,8 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .tnum{font-variant-numeric:tabular-nums}
 .hidden{display:none!important}
+.skip{position:absolute;left:8px;top:-48px;z-index:100;background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;padding:8px 14px;font-weight:600;color:var(--ink);box-shadow:var(--shadow-2);transition:top .15s}
+.skip:focus{top:8px}
 
 /* ============================ Shell ============================ */
 #root{position:fixed;inset:0;display:flex;flex-direction:column}
@@ -68,8 +76,8 @@ nav.tabs button:disabled{opacity:.4;cursor:default}
 /* ============================ Buttons ============================ */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 16px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);font-weight:550;font-size:14px;color:var(--ink)}
 .btn:hover{background:var(--hover)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.primary{background:var(--accent-active);border-color:var(--accent-active);color:#fff}
+.btn.primary:hover{background:#94492f;border-color:#94492f}
 .btn.sm{height:30px;padding:0 11px;font-size:13px;font-weight:500;gap:5px}
 .btn:disabled{opacity:.45;cursor:default}
 .toggle{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer;user-select:none}
@@ -298,32 +306,32 @@ const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const safeUrl=u=>{try{const x=new URL(String(u),location.href);return (x.protocol==="http:"||x.protocol==="https:"||x.protocol==="mailto:")?x.href:null;}catch(e){return null;}};
 const uniq=a=>[...new Set(a)];
-function darken(hex,f=.78){const m=hex.replace('#','');const n=parseInt(m,16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function darken(hex,f=.78){let m=String(hex).replace('#','');if(/^[0-9a-fA-F]{3}$/.test(m))m=m.split('').map(c=>c+c).join('');if(!/^[0-9a-fA-F]{6}$/.test(m))return hex;const n=parseInt(m,16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
 const SCALE=[["#4e79a7","#365677"],["#59a14f","#3f7437"],["#b07aa1","#835777"],["#e15759","#b23e40"],["#76b7b2","#4f8a85"],["#edc948","#b9972e"],["#ff9da7","#d46e78"],["#9c755f","#6f5343"]];
 const OTHER=["#bab0ac","#8a817c"];
 const SHAPES=["circle","square","triangle","diamond","pentagon","hexagon","wye","cross"];
 const ICON={
- library:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h6v14H4zM14 5h6v14h-6z"/></svg>',
- search:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>',
- chev:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
- check:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 5 5L20 6"/></svg>',
- methods:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h3l3-8 4 16 3-8h7"/></svg>',
- timeline:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M8 6h8a4 4 0 0 1 4 4v0a4 4 0 0 1-4 4H8"/></svg>',
- people:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-5-5.9"/></svg>',
- gear:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.4 2h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L4 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z"/></svg>',
- help:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01"/></svg>',
- folder:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h6l2 2h10v10H3z"/></svg>',
- lock:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
- sparkle:'<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z"/></svg>',
- ext:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 17 17 7M9 7h8v8"/></svg>',
- db:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
- task:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>',
- tag:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7v5l9 9 7-7-9-9H3z"/><circle cx="7.5" cy="7.5" r="1"/></svg>',
- close:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 6l12 12M18 6 6 18"/></svg>',
- arrowL:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M15 6l-6 6 6 6"/></svg>',
- arrowR:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 6l6 6-6 6"/></svg>',
- listc:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
- listd:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16M4 4.5v0M4 19.5v0"/></svg>',
+ library:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h6v14H4zM14 5h6v14h-6z"/></svg>',
+ search:'<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>',
+ chev:'<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
+ check:'<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 5 5L20 6"/></svg>',
+ methods:'<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h3l3-8 4 16 3-8h7"/></svg>',
+ timeline:'<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M8 6h8a4 4 0 0 1 4 4v0a4 4 0 0 1-4 4H8"/></svg>',
+ people:'<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-5-5.9"/></svg>',
+ gear:'<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.4 2h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L4 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z"/></svg>',
+ help:'<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01"/></svg>',
+ folder:'<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h6l2 2h10v10H3z"/></svg>',
+ lock:'<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+ sparkle:'<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z"/></svg>',
+ ext:'<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 17 17 7M9 7h8v8"/></svg>',
+ db:'<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+ task:'<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>',
+ tag:'<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7v5l9 9 7-7-9-9H3z"/><circle cx="7.5" cy="7.5" r="1"/></svg>',
+ close:'<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+ arrowL:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M15 6l-6 6 6 6"/></svg>',
+ arrowR:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 6l6 6-6 6"/></svg>',
+ listc:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+ listd:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16M4 4.5v0M4 19.5v0"/></svg>',
 };
 
 /* ============================ YAML front-matter parser (targeted) ============================ */
@@ -343,7 +351,7 @@ function parseFlowList(v){
   const out=[];let cur="",q=null;
   for(const ch of v){
     if(q){if(ch===q)q=null;else cur+=ch;}
-    else if(ch==='"'||ch==="'")q=ch;
+    else if((ch==='"'||ch==="'")&&cur.trim()==="")q=ch;
     else if(ch===","){out.push(cur);cur="";}
     else cur+=ch;
   }
@@ -354,8 +362,8 @@ function indent(l){return l.length-l.replace(/^ +/,"").length;}
 function parseFrontMatter(text){
   // split front-matter and body
   let fm="",body="";
-  const t=text.replace(/\r\n/g,"\n");
-  const m=t.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  const t=text.replace(/^\uFEFF/,"").replace(/\r\n/g,"\n");
+  const m=t.match(/^\s*---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if(m){fm=m[1];body=m[2]||"";}else{body=t;}
   const obj={};
   const lines=fm.split("\n");
@@ -612,14 +620,15 @@ function render(){
   if(S.mode==="welcome"){root.innerHTML=welcomeHTML()+(S.modal?modalHTML():"");root.onclick=onClick;return;}
   const loaded=S.corpus.length>0;
   root.innerHTML=`
+  <a href="#main" class="skip">Skip to content</a>
   <header class="shell">
-    <div class="wordmark" data-act="home">
+    <div class="wordmark" data-act="home" tabindex="0" role="button" aria-label="Home">
       <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="#fff" stroke="#cf7152" stroke-width="1.6"/><path d="M10 1.5 A8.5 8.5 0 0 0 10 18.5 Z" fill="#cf7152"/></svg>
       <span class="name">Paper Map</span>
     </div>
     <span class="dot">·</span>
     <div class="menu" id="mapmenu"><button class="corpusbtn" data-act="mapmenu"><span class="ct">${esc(S.config.title||(S.dirHandle&&S.dirHandle.name)||"Untitled corpus")}</span>${ICON.chev}</button></div>
-    <nav class="tabs">
+    <nav class="tabs" role="tablist" aria-label="Views">
       ${tab("library","Library")}
       ${tab("review","Review",S.corpus.filter(p=>p.status==="unverified").length)}
       ${tab("map","Map")}
@@ -629,18 +638,29 @@ function render(){
     <div class="search"><span class="ico">${ICON.search}</span><input id="search" placeholder="Search papers, authors…" value="${esc(S.filters.search)}"><kbd>/</kbd></div>
     <div class="statusread">${saveRead()}<span>·</span><span class="tnum">${S.corpus.length} papers</span><span>·</span><span>◴ Offline</span></div>
     ${modeChip()}
-    <button class="iconbtn" data-act="settings" title="Settings">${ICON.gear}</button>
-    <button class="iconbtn" data-act="help" title="Help">${ICON.help}</button>
+    ${S.mode!=="browse"?`<button class="iconbtn" data-act="settings" title="Settings" aria-label="Settings">${ICON.gear}</button>`:""}
+    <button class="iconbtn" data-act="help" title="Help" aria-label="Help">${ICON.help}</button>
   </header>
   ${subheader()}
-  <div class="main" id="main">${viewHTML()}${S.selectedEntity?entityPanelHTML():""}</div>
+  <main class="main" id="main" tabindex="-1">${viewHTML()}${S.selectedEntity?entityPanelHTML():""}</main>
   ${S.modal?modalHTML():""}`;
   wireShell();
+  manageDialogFocus();
   if(S.view==="map")requestAnimationFrame(()=>renderMap());
+}
+let _dlgKey=null;
+function manageDialogFocus(){
+  const key=S.modal?("modal:"+S.modal):S.selectedEntity?("ent:"+S.selectedEntity):(S.selectedId&&S.view==="library")?("paper:"+S.selectedId):null;
+  if(key===_dlgKey)return;
+  const wasOpen=!!_dlgKey;_dlgKey=key;
+  if(key){
+    const dlg=document.querySelector(".modal")||document.querySelector(".panel");
+    if(dlg){const f=dlg.querySelector('button:not([disabled]),a[href],input,textarea,select,[tabindex]:not([tabindex="-1"])');(f||dlg).focus();}
+  }else if(wasOpen){const m=$("#main");if(m)m.focus();}
 }
 function tab(id,label,badge){
   const b=(badge!=null&&badge>0)?`<span class="badge">${badge}</span>`:"";
-  return `<button class="${S.view===id?"active":""}" data-tab="${id}">${label}${b}</button>`;
+  return `<button class="${S.view===id?"active":""}" data-tab="${id}" role="tab" aria-selected="${S.view===id?"true":"false"}">${label}${b}</button>`;
 }
 function subheader(){
   if(S.view==="library"){
@@ -689,7 +709,7 @@ function entitiesHTML(){
   return `<div class="entities">${types.map(ty=>{
     const items=byType[ty].sort((a,b)=>entityUsage(b.id).length-entityUsage(a.id).length||a.name.localeCompare(b.name));
     return `<div class="entgroup"><div class="entgrouph">${esc(ty)}s <span class="badge">${items.length}</span></div>
-      <div class="entgrid">${items.map(e=>{const u=entityUsage(e.id).length;const m=e.meta||{};return `<div class="entcard" data-act="openentity" data-ent="${esc(e.id)}">
+      <div class="entgrid">${items.map(e=>{const u=entityUsage(e.id).length;const m=e.meta||{};return `<div class="entcard" data-act="openentity" data-ent="${esc(e.id)}" tabindex="0" role="button" aria-label="${esc(e.name)}">
         <div class="entname">${esc(e.name)}${e.status==="stub"?` <span class="statusbadge unverified" style="height:18px;font-size:11px">stub</span>`:""}</div>
         <div class="entmeta">${m.modality?esc(m.modality)+" · ":""}${m.size?esc(m.size)+" · ":""}<span class="tnum">${u} paper${u!==1?"s":""}</span></div>
       </div>`;}).join("")}</div></div>`;
@@ -699,12 +719,12 @@ function entityPanelHTML(){
   const e=S.entities[S.selectedEntity];if(!e)return "";
   const used=entityUsage(e.id);const m=e.meta||{};
   const editable=S.mode==="edit"||S.mode==="demo"||S.mode==="memory";
-  return `<div class="scrim" data-act="closeentity"></div><div class="panel" id="entpanel">
+  return `<div class="scrim" data-act="closeentity"></div><div class="panel" id="entpanel" role="dialog" aria-modal="true" aria-label="${esc(e.name)}">
     <div class="phead">
       <span class="chip ent" style="cursor:default">${e.type==="dataset"?ICON.db:e.type==="task"?ICON.task:ICON.tag} ${esc(e.type)}</span>
       <div class="spacer" style="flex:1"></div>
       ${e.status==="stub"?`<span class="statusbadge unverified">stub</span>`:""}
-      <button class="iconbtn" data-act="closeentity">${ICON.close}</button>
+      <button class="iconbtn" data-act="closeentity" aria-label="Close">${ICON.close}</button>
     </div>
     <div class="pbody">
       ${editable?`<input class="enttitle-edit" data-act="editentname" value="${esc(e.name)}" placeholder="Name…">`:`<div class="ptitle">${esc(e.name)}</div>`}
@@ -737,12 +757,12 @@ function facet(title,field,setKey){
   const sel=filterSet(setKey);
   const isEnt=entityFacets().some(f=>f.key===field);
   return `<div class="facet ${collapsed?"collapsed":""}">
-    <div class="h" data-facet="${field}"><span>${esc(title)}</span><span class="chev">${ICON.chev}</span></div>
+    <div class="h" data-facet="${field}" tabindex="0" role="button" aria-expanded="${collapsed?"false":"true"}"><span>${esc(title)}</span><span class="chev">${ICON.chev}</span></div>
     <div class="opts">${keys.map(k=>{
       let sw="";
       if(field==="modality"&&S.derived.mv[k])sw=`<span class="sw" style="background:${S.derived.mv[k].color};${S.derived.mv[k].shape==="circle"?"border-radius:50%":""}"></span>`;
       const lbl=isEnt?entityName(k):(field==="status"?statusWord(k):k);
-      return `<div class="opt ${sel.has(k)?"on":""}" data-opt="${esc(setKey)}" data-val="${esc(k)}">
+      return `<div class="opt ${sel.has(k)?"on":""}" data-opt="${esc(setKey)}" data-val="${esc(k)}" tabindex="0" role="checkbox" aria-checked="${sel.has(k)?"true":"false"}">
         <span class="cbx">${sel.has(k)?ICON.check:""}</span>
         <span class="lbl">${sw}${esc(lbl)}</span><span class="cnt tnum">${counts[k]}</span></div>`;
     }).join("")}</div></div>`;
@@ -776,7 +796,7 @@ function methodChip(m,p){
 function rowHTML(p){
   const v=S.derived.val[p.id]||{errs:[],warns:[]};
   const broken=v.warns.some(w=>w.startsWith("broken"));
-  return `<div class="row ${S.density} ${S.selectedId===p.id?"sel":""}" data-row="${esc(p.id)}">
+  return `<div class="row ${S.density} ${S.selectedId===p.id?"sel":""}" data-row="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.title)}">
     <div class="r1"><span class="title">${esc(p.title)}</span>
       ${v.errs.length?`<span class="warnbadge">⚠ ${esc(v.errs[0])}</span>`:`<span class="statusbadge ${p.status}">${statusLabel(p.status)}</span>`}</div>
     <div class="meta">${esc(authorsShort(p))} · <span class="tnum">${p.year||"—"}</span> · ${esc(p.venue||"")}</div>
@@ -816,14 +836,14 @@ function panelHTML(){
   const v=S.derived.val[p.id]||{warns:[]};
   const editable=S.mode==="edit"||S.mode==="demo"||S.mode==="memory";
   const pdfOk=p.pdf&&(p.pdf.startsWith("http")||S.mode==="edit");
-  return `<div class="scrim" data-act="closepanel"></div><div class="panel" id="panel">
+  return `<div class="scrim" data-act="closepanel"></div><div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="${esc(p.title)}">
     <div class="phead">
-      <button class="navbtn" data-act="prev" ${idx<=0?"disabled":""}>${ICON.arrowL}</button>
-      <button class="navbtn" data-act="next" ${idx>=list.length-1?"disabled":""}>${ICON.arrowR}</button>
+      <button class="navbtn" data-act="prev" aria-label="Previous paper" ${idx<=0?"disabled":""}>${ICON.arrowL}</button>
+      <button class="navbtn" data-act="next" aria-label="Next paper" ${idx>=list.length-1?"disabled":""}>${ICON.arrowR}</button>
       ${p.projects[0]?`<span class="chip proj">⧉ ${esc(p.projects[0])}</span>`:""}
       <div class="spacer" style="flex:1"></div>
-      <span class="statuspill ${p.status}" data-act="cyclestatus" title="Click to change status">${statusLabel(p.status)} ${ICON.chev}</span>
-      <button class="iconbtn" data-act="closepanel">${ICON.close}</button>
+      <span class="statuspill ${p.status}" data-act="cyclestatus" title="Click to change status" tabindex="0" role="button" aria-label="Status: ${statusWord(p.status)}. Activate to change.">${statusLabel(p.status)} ${ICON.chev}</span>
+      <button class="iconbtn" data-act="closepanel" aria-label="Close">${ICON.close}</button>
     </div>
     <div class="pbody">
       <div class="ptitle">${esc(p.title)}</div>
@@ -858,7 +878,7 @@ function panelHTML(){
 function relItem(id,kind){
   const t=S.corpus.find(x=>x.id===id);
   if(!t)return `<div class="relitem broken">⚠ ${esc(id)} (missing) · ${kind}</div>`;
-  return `<div class="relitem" data-act="goto" data-id="${esc(id)}">→ ${esc(t.title)} <span style="color:var(--ink-3);font-size:12px">· ${kind}</span></div>`;
+  return `<div class="relitem" data-act="goto" data-id="${esc(id)}" tabindex="0" role="link" aria-label="${esc(t.title)} — ${kind}">→ ${esc(t.title)} <span style="color:var(--ink-3);font-size:12px">· ${kind}</span></div>`;
 }
 
 /* ============================ Review ============================ */
@@ -872,7 +892,7 @@ function reviewHTML(){
 }
 function kcard(p,st){
   const prov=(p.tags_provenance||[])[0];
-  return `<div class="kcard ${st}" data-card="${esc(p.id)}" draggable="true">
+  return `<div class="kcard ${st}" data-card="${esc(p.id)}" draggable="true" tabindex="0" role="button" aria-label="${esc(p.title)}">
     <div class="kt">${esc(p.title)}</div>
     <div class="km tnum">${esc(authorsShort(p))} · ${p.year||"—"}</div>
     <div class="kchips">${p.methods.slice(0,3).map(m=>`<span class="chip"><span class="diamond"></span>${esc(m)}</span>`).join("")}</div>
@@ -886,13 +906,13 @@ function mapShellHTML(){
     <div class="lensswitch">
       ${["methods","timeline","people"].map(l=>{const lab=l==="methods"?facetOf(S.facetKey).label:l[0].toUpperCase()+l.slice(1);return `<button class="${S.lens===l?"on":""}" data-lens="${l}">${ICON[l]} ${esc(lab)}</button>`;}).join("")}
     </div>
-    <svg id="mapsvg"></svg>
+    <svg id="mapsvg" role="img" aria-label="Interactive map of the papers. The Library and Review tabs list the same papers in a keyboard-accessible form."></svg>
     <div class="legend ${S.legendCollapsed?"collapsed":""}" id="legend">
-      <div class="lgh" data-act="togglelegend"><span>${S.lens==="people"?"AUTHORS":"MODALITY"}</span><span>${ICON.chev}</span></div>
+      <div class="lgh" data-act="togglelegend" tabindex="0" role="button" aria-expanded="${S.legendCollapsed?"false":"true"}"><span>${S.lens==="people"?"AUTHORS":"MODALITY"}</span><span>${ICON.chev}</span></div>
       <div class="lgbody">${legendBody()}</div>
     </div>
     <div class="zoomctl">
-      <button data-act="zoomin">+</button><button data-act="zoomout">−</button><button data-act="zoomfit" title="Fit">⤢</button>
+      <button data-act="zoomin" aria-label="Zoom in">+</button><button data-act="zoomout" aria-label="Zoom out">−</button><button data-act="zoomfit" title="Fit" aria-label="Fit to view">⤢</button>
     </div>
   </div>`;
 }
@@ -959,7 +979,7 @@ function renderFacet(key,W,H){
     if(i%2===1)bands+=`<rect x="0" y="${ln.y}" width="${W}" height="${ln.laneH}" fill="#00000004"/>`;
     const laneLabel=(key==="methods"||ln.val==="—")?ln.val:entityName(ln.val);
     labels+=`<text x="${padX}" y="${ln.y+26}" font-size="12" font-weight="700" fill="#78736a" letter-spacing=".04em">${esc(String(laneLabel).toUpperCase())}</text>
-      <text x="${padX}" y="${ln.y+42}" font-size="11" fill="#a39c8f">${ln.items.length} paper${ln.items.length!==1?"s":""}</text>`;
+      <text x="${padX}" y="${ln.y+42}" font-size="11" fill="#6c675d">${ln.items.length} paper${ln.items.length!==1?"s":""}</text>`;
     ln.items.forEach((p,k)=>{
       const rr=Math.floor(k/ln.perRow),cc=k%ln.perRow;
       const x=labelW+padX+cc*gap+18;const ny=ln.y+34+rr*52;
@@ -984,28 +1004,30 @@ function renderFacet(key,W,H){
 }
 
 function renderTimeline(W,H){
-  const years=S.corpus.map(p=>p.year).filter(Boolean);
+  const isYear=y=>typeof y==="number"&&isFinite(y);
+  const years=S.corpus.map(p=>p.year).filter(isYear);
+  if(!years.length)return `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="14" fill="#6c675d">No dated papers to plot on a timeline.</text>`;
   const minY=Math.min(...years),maxY=Math.max(...years);
   const padL=60,padR=60,plotW=W-padL-padR,axisY=H-46;
   const xOf=yr=>padL+(maxY===minY?plotW/2:(yr-minY)/(maxY-minY)*plotW);
-  // slot stacking: group by year, stack vertically around mid
-  const byYear={};S.corpus.forEach(p=>{(byYear[p.year]=byYear[p.year]||[]).push(p);});
+  // slot stacking: group by year (dated papers only), stack vertically around mid
+  const byYear={};S.corpus.forEach(p=>{if(!isYear(p.year))return;(byYear[p.year]=byYear[p.year]||[]).push(p);});
   const pos={};const midY=axisY/2+10;
   Object.keys(byYear).forEach(yr=>{
     const arr=sortPapers(byYear[yr]);
     arr.forEach((p,i)=>{const off=(i-(arr.length-1)/2)*46;pos[p.id]={x:xOf(+yr),y:midY+off};});
   });
   // axis ticks every 2 yrs
-  let axis="";for(let yr=Math.ceil(minY/2)*2;yr<=maxY;yr+=2){const x=xOf(yr);axis+=`<line x1="${x}" y1="${axisY-6}" x2="${x}" y2="${axisY}" stroke="#d8d3c8"/><text x="${x}" y="${axisY+16}" text-anchor="middle" font-size="11" fill="#a39c8f" class="tnum">${yr}</text>`;}
+  let axis="";for(let yr=Math.ceil(minY/2)*2;yr<=maxY;yr+=2){const x=xOf(yr);axis+=`<line x1="${x}" y1="${axisY-6}" x2="${x}" y2="${axisY}" stroke="#d8d3c8"/><text x="${x}" y="${axisY+16}" text-anchor="middle" font-size="11" fill="#6c675d" class="tnum">${yr}</text>`;}
   axis+=`<line x1="${padL-10}" y1="${axisY}" x2="${W-padR+10}" y2="${axisY}" stroke="#e9e6df"/>`;
   // edges
   let edges="";
   S.corpus.forEach(p=>{p.builds_on.forEach(t=>{const a=pos[t],b=pos[p.id];if(!a||!b)return;
     const mx=(a.x+b.x)/2;edges+=`<path d="M${a.x} ${a.y} C${mx} ${a.y} ${mx} ${b.y} ${b.x} ${b.y}" fill="none" stroke="#c7beae" stroke-width="1.3" marker-end="url(#arr)" opacity=".85"/>`;});});
   let nodes="",labels="";
-  S.corpus.forEach(p=>{const q=pos[p.id];nodes+=nodeMarkup(p,q.x,q.y,rad(p));});
+  S.corpus.forEach(p=>{const q=pos[p.id];if(!q)return;nodes+=nodeMarkup(p,q.x,q.y,rad(p));});
   // label a few (highest in-degree)
-  [...S.corpus].sort((a,b)=>(S.derived.indeg[b.id]||0)-(S.derived.indeg[a.id]||0)).slice(0,4).forEach(p=>{const q=pos[p.id];labels+=`<text x="${q.x+rad(p)+6}" y="${q.y+4}" font-size="12" fill="#57534c">${esc(p.title.slice(0,18))}…</text>`;});
+  [...S.corpus].sort((a,b)=>(S.derived.indeg[b.id]||0)-(S.derived.indeg[a.id]||0)).slice(0,4).forEach(p=>{const q=pos[p.id];if(!q)return;labels+=`<text x="${q.x+rad(p)+6}" y="${q.y+4}" font-size="12" fill="#57534c">${esc(p.title.slice(0,18))}…</text>`;});
   return `<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L8 4.5 L0 9 z" fill="#b3a994"/></marker></defs>
     <g transform="${mapTransform()}">${axis}${edges}${nodes}${labels}</g>`;
 }
@@ -1078,8 +1100,8 @@ status: unverified
 ## Abstract
 We study attention patterns that let transformers process long documents...`;
 function helpHTML(){
-  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="helpmodal">
-    <div class="modalhead"><h2>How papers get in</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal">${ICON.close}</button></div>
+  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="helpmodal" role="dialog" aria-modal="true" aria-label="How papers get in">
+    <div class="modalhead"><h2>How papers get in</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal" aria-label="Close">${ICON.close}</button></div>
     <div class="modalbody">
       <p style="margin-top:0;font-size:13.5px;color:var(--ink-2)">Every paper is one Markdown file at <code>papers/&lt;id&gt;.md</code>. The schema is the only contract — fill it however you like:</p>
       <div class="howstep"><div class="hownum">1</div><div><b>By hand</b><p>Copy an existing file in <code>papers/</code> and edit the fields.</p></div></div>
@@ -1175,8 +1197,8 @@ function importHTML(){
   const recs=S._importParsed||[];
   const here=S.mode==="edit"&&S.papersDirHandle;
   const canPick=!!window.showDirectoryPicker;
-  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="importmodal">
-    <div class="modalhead"><h2>Import references</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal">${ICON.close}</button></div>
+  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="importmodal" role="dialog" aria-modal="true" aria-label="Import references">
+    <div class="modalhead"><h2>Import references</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal" aria-label="Close">${ICON.close}</button></div>
     <div class="modalbody">
       <p style="margin-top:0;font-size:13.5px;color:var(--ink-2)">Paste a <b>BibTeX</b> (<code>.bib</code>) or <b>RIS</b> (<code>.ris</code>) export — e.g. from Zotero — or choose a file. Each reference becomes a <b>draft</b> paper, ready to enrich.</p>
       <label class="btn sm" style="display:inline-flex;cursor:pointer"><input type="file" id="importfile" accept=".bib,.ris,.txt,.bibtex" style="display:none">${ICON.folder} Choose a file…</label>
@@ -1298,8 +1320,8 @@ const CONFIG_EXAMPLE=`{
   "focal_authors": ["A. Researcher"]
 }`;
 function formatHTML(){
-  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="formatmodal">
-    <div class="modalhead"><h2>How the files work</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal">${ICON.close}</button></div>
+  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="formatmodal" role="dialog" aria-modal="true" aria-label="How the files work">
+    <div class="modalhead"><h2>How the files work</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal" aria-label="Close">${ICON.close}</button></div>
     <div class="modalbody">
       <p style="margin-top:0;font-size:13.5px;color:var(--ink-2)">A <b>map is a folder</b> of plain text you own — edit, diff, and version every file. No database, no lock-in.</p>
       <div class="codeblock">${esc(FOLDER_LAYOUT)}</div>
@@ -1333,7 +1355,7 @@ function welcomeHTML(){
       <h1>Paper Map</h1>
       <div class="tag">See the shape of a curated set of papers.</div>
       <div class="wcards">
-        <div class="wcard"><div class="ic">${ICON.folder}</div><h3>Open my papers</h3><p>Pick a folder of paper files on your computer. Edits autosave back to them. <span style="color:var(--ink-3)">(Chrome or Edge)</span></p><button class="btn primary" data-act="pickfolder">Choose folder</button></div>
+        <div class="wcard"><div class="ic">${ICON.folder}</div><h3>Open my papers</h3><p>Pick a folder of paper files on your computer. Edits autosave back to them. <span style="color:var(--ink-3)">(Chrome or Edge)</span></p>${window.showDirectoryPicker?`<button class="btn primary" data-act="pickfolder">Choose folder</button>`:`<button class="btn" disabled>Needs Chrome or Edge</button><div style="margin-top:8px;font-size:12.5px;color:var(--ink-3)">Editing needs a Chromium browser — you can still browse a published map or load the demo.</div>`}</div>
         <div class="wcard"><div class="ic">${ICON.sparkle}</div><h3>Explore the demo</h3><p>Load a sample corpus in your browser. No files, nothing saved. Just look around.</p><button class="btn" data-act="loaddemo">Load demo</button></div>
       </div>
       <div class="wfoot"><a data-act="import">Import .bib / .ris →</a><a data-act="howin">How papers get in →</a><a data-act="format">How the files work →</a></div>
@@ -1352,33 +1374,41 @@ function loadDemo(){
   toast("Demo loaded — nothing is saved");
 }
 async function loadFromManifest(){
+  let resp;
+  try{resp=await fetch("index.json");}catch(e){return;/* not served (e.g. file://) — stay on welcome */}
+  if(!resp.ok)return;/* no manifest at this URL — stay on welcome */
   try{
-    const r=await fetch("index.json");if(!r.ok)throw 0;const j=await r.json();
+    const j=await resp.json();
     S.corpus=(j.papers||[]).map(fromRecord);S.config.title=j.title||S.config.title;
     // try config
     try{const c=await fetch("papermap.config.json");if(c.ok)S.config=Object.assign(S.config,await c.json());}catch(e){}
     // try entities
     S.entities={};try{const er=await fetch("entities.json");if(er.ok){const ej=await er.json();(ej.entities||[]).forEach(r=>S.entities[r.id]=fromEntityRecord(r));}}catch(e){}
     S.mode="browse";deriveCorpus();render();
-  }catch(e){/* not served — stay on welcome */}
+  }catch(e){console.error("Paper Map: found index.json but could not load it —",e);toast("Found index.json but couldn’t read it — check it’s valid JSON.");}
 }
 async function pickFolder(){
   if(!window.showDirectoryPicker){toast("Editing needs Chrome or Edge. Try the demo.");return;}
   let dir;try{dir=await window.showDirectoryPicker({mode:"readwrite"});}catch(e){return;}
-  S.dirHandle=dir;await loadFromDir();
+  S.dirHandle=dir;try{await loadFromDir();}catch(e){console.error("Paper Map: load failed —",e);toast("Couldn’t load that folder — "+((e&&e.message)||e));}
 }
 async function loadFromDir(){
   const dir=S.dirHandle;const corpus=[];S.fileHandles={};S.fileMeta={};
   // config
-  try{const cf=await dir.getFileHandle("papermap.config.json");const f=await cf.getFile();S.config=Object.assign({},JSON.parse(await f.text()));}catch(e){S.config={};}
+  S.config={};
+  try{const cf=await dir.getFileHandle("papermap.config.json");const f=await cf.getFile();const txt=await f.text();try{S.config=Object.assign({},JSON.parse(txt));}catch(pe){toast("papermap.config.json isn’t valid JSON — using defaults.");}}catch(e){/* no config file — fine */}
   // papers dir
   let pdir=dir;try{pdir=await dir.getDirectoryHandle("papers");}catch(e){pdir=dir;}
   S.papersDirHandle=pdir;
+  const skipped=[];
   for await(const [name,h] of pdir.entries()){
     if(h.kind==="file"&&name.endsWith(".md")){
-      const file=await h.getFile();const {fm,sec}=parseFrontMatter(await file.text());
-      const p=normalizePaper(fm,sec);if(!p.id)p.id=name.replace(/\.md$/,"");
-      corpus.push(p);S.fileHandles[p.id]=h;S.fileMeta[p.id]=file.lastModified;
+      try{
+        const file=await h.getFile();const {fm,sec}=parseFrontMatter(await file.text());
+        const p=normalizePaper(fm,sec);if(!p.id)p.id=name.replace(/\.md$/,"");
+        if(S.fileHandles[p.id])skipped.push(name+" (duplicate id “"+p.id+"”)");
+        corpus.push(p);S.fileHandles[p.id]=h;S.fileMeta[p.id]=file.lastModified;
+      }catch(err){skipped.push(name);}
     }
   }
   // entities dir
@@ -1389,7 +1419,8 @@ async function loadFromDir(){
   S.corpus=corpus;S.mode="edit";if(!S.config.title)S.config.title=dir.name;
   try{await saveRecent(dir,S.config.title||dir.name);}catch(e){}
   deriveCorpus();S.view="library";S.saveState="saved";render();
-  toast(`Loaded ${corpus.length} papers · ${Object.keys(S.entities).length} entities from ${dir.name}/`);
+  if(skipped.length)console.warn("Paper Map: skipped files during load:",skipped);
+  toast(`Loaded ${corpus.length} papers · ${Object.keys(S.entities).length} entities from ${dir.name}/`+(skipped.length?` · ${skipped.length} file${skipped.length!==1?"s":""} skipped`:""));
 }
 let _saveTimer=null;
 function scheduleSave(p){
@@ -1598,6 +1629,16 @@ document.addEventListener("keydown",e=>{
   if(S.selectedId){const p=selPaper();if(k==="["){navPaper(-1);}if(k==="]"){navPaper(1);}if(k==="r"&&p){setStatus(p,"verified");}if(k==="f"&&p){setStatus(p,"flagged");}}
   if((S.view==="library")&&(k==="j"||k==="k")){const list=sortPapers(filteredCorpus());let i=list.findIndex(x=>x.id===S.selectedId);i=k==="j"?Math.min(list.length-1,i+1):Math.max(0,i-1);if(list[i]){S.selectedId=list[i].id;render();}}
 });
+/* keyboard activation for non-native (div/span/g) controls: Enter/Space mirrors click */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const t=e.target;if(!t||!t.matches)return;
+  if(t.matches("input,textarea,select,button,a,[contenteditable]"))return; // native handling
+  const ctl=t.closest("[data-act],[data-tab],[data-row],[data-opt],[data-facet],[data-facetpick],[data-dens],[data-card],[data-id],[data-node],[data-author]");
+  if(!ctl||ctl!==t)return;
+  e.preventDefault();
+  onClick({target:t});
+});
 window.addEventListener("resize",()=>{if(S.view==="map")renderMap();});
 window.addEventListener("focus",async()=>{ // external-change check
   if(S.mode!=="edit"||!S.dirHandle)return;
@@ -1606,11 +1647,13 @@ window.addEventListener("focus",async()=>{ // external-change check
 document.addEventListener("click",e=>{if(!e.target.closest("#sortmenu")){const p=$("#sortpop");if(p)p.remove();}if(!e.target.closest("#mapmenu")){const p=$("#mappop");if(p)p.remove();}},true);
 
 /* ============================ Boot ============================ */
+window.addEventListener("unhandledrejection",e=>{console.error("Paper Map: unhandled error —",e&&e.reason);});
 (async function boot(){
   S.recents=(await idbGet("recents"))||[];
   // detect served (published) mode: if index.json fetchable over http(s)
-  if(location.protocol==="http:"||location.protocol==="https:"){loadFromManifest();}
+  if(location.protocol==="http:"||location.protocol==="https:"){loadFromManifest().catch(e=>console.error(e));}
   render();
+  if(location.protocol==="file:")setTimeout(()=>toast("Opened from a file:// path — a published map’s data only loads when served over http(s). Use Choose folder (Chrome/Edge), or load the demo."),400);
 })();
 </script>
 </body>
