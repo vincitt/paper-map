@@ -1491,7 +1491,7 @@ function onClick(e){
   if(t.dataset.facet){S.collapsedFacets.has(t.dataset.facet)?S.collapsedFacets.delete(t.dataset.facet):S.collapsedFacets.add(t.dataset.facet);render();return;}
   if(t.dataset.dens){S.density=t.dataset.dens;render();return;}
   if(t.dataset.card){S.selectedId=t.dataset.card;S.view="library";render();return;}
-  if(t.dataset.id){S.selectedId=t.dataset.id;render();return;}
+  if(t.dataset.id){S.selectedEntity=null;S.selectedId=t.dataset.id;S.view="library";render();return;}
   const p=selPaper();
   switch(act){
     case "home":S.view="library";S.selectedId=null;render();break;
@@ -1510,7 +1510,6 @@ function onClick(e){
     case "next":navPaper(1);break;
     case "cyclestatus":if(p)cycleStatus(p);break;
     case "markreviewed":if(p)setStatus(p,"verified");break;
-    case "goto":break;
     case "showmap":S.view="map";render();break;
     case "doi":if(p&&p.doi)window.open("https://doi.org/"+p.doi,"_blank");break;
     case "pdf":if(p&&p.pdf&&p.pdf.startsWith("http"))window.open(p.pdf,"_blank");break;
