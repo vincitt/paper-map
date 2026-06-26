@@ -19,7 +19,7 @@ datasets: [wmt14-enfr]
 tasks: [machine-translation]
 tools: [theano]
 status: flagged
-tags_provenance:
+tag_evidence:
   - field: method
     value: "attention"
     source: abstract

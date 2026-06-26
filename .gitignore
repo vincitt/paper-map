@@ -12,3 +12,6 @@ DESIGN_SPEC.md
 *.swp
 .idea/
 .vscode/
+
+# Claude Code local tooling state (worktrees, plans, preview launch configs)
+.claude/

@@ -19,7 +19,7 @@ datasets: [mnist]
 tasks: [representation-learning]
 tools: []
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "deep belief network"
     source: abstract
