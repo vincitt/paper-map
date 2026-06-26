@@ -1,0 +1,21 @@
+name: demo-data-sync
+
+# Fails if the demo data has drifted: the .md sources in papers/ and entities/
+# must agree with index.json, entities.json, and the inlined DEMO/ENT_DEMO/CFG_DEMO
+# constants in index.html. Regenerate with: node scripts/sync-demo.mjs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify demo data is in sync
+        run: node scripts/sync-demo.mjs --check

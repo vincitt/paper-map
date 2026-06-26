@@ -1,7 +1,7 @@
 ---
 id: language-modeling
 type: task
-name: "language modeling"
+name: "Language Modeling"
 ---
 
 ## Description

@@ -332,9 +332,9 @@
           "confidence": 0.91
         }
       ],
+      "notes": "Review: confirm whether to add a see_also link to word2vec; double-check author affiliations before marking reviewed.",
       "added": "2026-06-25",
       "updated": "2026-06-25",
-      "notes": "Review: confirm whether to add a see_also link to word2vec; double-check author affiliations before marking reviewed.",
       "datasets": [
         "wmt14-enfr"
       ],
@@ -472,9 +472,9 @@
           "confidence": 0.9
         }
       ],
+      "notes": "Drafted by LLM — verify the methods tags and the builds_on link before reviewing.",
       "added": "2026-06-25",
       "updated": "2026-06-25",
-      "notes": "Drafted by LLM — verify the methods tags and the builds_on link before reviewing.",
       "datasets": [
         "bookcorpus",
         "wikipedia"
@@ -540,9 +540,9 @@
           "confidence": 0.88
         }
       ],
+      "notes": "Drafted by LLM — author list truncated to a representative subset; confirm modality.",
       "added": "2026-06-25",
       "updated": "2026-06-25",
-      "notes": "Drafted by LLM — author list truncated to a representative subset; confirm modality.",
       "datasets": [
         "common-crawl",
         "wikipedia"
