@@ -1,7 +1,7 @@
 ---
 id: image-classification
 type: task
-name: "image classification"
+name: "Image Classification"
 ---
 
 ## Description

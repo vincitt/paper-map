@@ -1,7 +1,7 @@
 ---
 id: word-representation
 type: task
-name: "word representation"
+name: "Word Representation"
 ---
 
 ## Description

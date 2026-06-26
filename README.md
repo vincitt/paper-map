@@ -139,6 +139,10 @@ Entities show up under the **Entities** tab (browse by type, sorted by usage) an
 
 It's just files — Markdown, YAML, JSON. Diff them, PR them, keep them in any repo, move them anywhere. No lock-in.
 
+## Contributing
+
+The whole app is one dependency-free `index.html` — no build step, no `npm`. Edit it, refresh the browser, open a PR. Start with [CONTRIBUTING.md](CONTRIBUTING.md) for setup and conventions, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the file is organized inside.
+
 ## License
 
 [MIT](LICENSE).

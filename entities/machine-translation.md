@@ -1,7 +1,7 @@
 ---
 id: machine-translation
 type: task
-name: "machine translation"
+name: "Machine Translation"
 ---
 
 ## Description

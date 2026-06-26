@@ -1,7 +1,7 @@
 ---
 id: language-understanding
 type: task
-name: "language understanding"
+name: "Language Understanding"
 ---
 
 ## Description

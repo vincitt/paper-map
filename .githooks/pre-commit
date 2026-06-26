@@ -1,0 +1,32 @@
+#!/bin/sh
+# Paper Map pre-commit hook — keep the demo data in sync.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+#
+# Mirrors the CI gate (.github/workflows/sync-check.yml): it blocks a commit when
+# index.json / entities.json / the inlined DEMO·ENT_DEMO·CFG_DEMO constants in
+# index.html no longer match the .md sources. Regenerate with:
+#   node scripts/sync-demo.mjs
+
+# Only run when something that affects the demo data is staged — keep unrelated
+# commits fast and quiet.
+git diff --cached --name-only \
+  | grep -qE '^(papers/|entities/|papermap\.config\.json|index\.html|index\.json|entities\.json|scripts/sync-demo\.mjs)' \
+  || exit 0
+
+# Best-effort: if node isn't installed, don't block — CI still enforces it.
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found — skipping demo-sync check (CI will still enforce it)." >&2
+  exit 0
+fi
+
+if ! node scripts/sync-demo.mjs --check; then
+  echo "" >&2
+  echo "✗ Commit blocked: demo data is out of sync." >&2
+  echo "  Run:  node scripts/sync-demo.mjs" >&2
+  echo "  then stage the regenerated files and commit again." >&2
+  echo "  (bypass once with: git commit --no-verify)" >&2
+  exit 1
+fi
+
+exit 0

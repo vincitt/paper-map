@@ -1,7 +1,7 @@
 ---
 id: representation-learning
 type: task
-name: "representation learning"
+name: "Representation Learning"
 ---
 
 ## Description
