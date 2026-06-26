@@ -24,7 +24,7 @@ datasets: [wmt14-ende, wmt14-enfr]
 tasks: [machine-translation]
 tools: [tensorflow]
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "self-attention"
     source: abstract

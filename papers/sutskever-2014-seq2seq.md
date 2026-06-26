@@ -19,7 +19,7 @@ datasets: [wmt14-enfr]
 tasks: [machine-translation]
 tools: [distbelief]
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "LSTM"
     source: abstract

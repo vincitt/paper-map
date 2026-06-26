@@ -125,7 +125,7 @@ function parseFrontMatter(text) {
   return { fm: obj, sec };
 }
 
-const KNOWN_FM = new Set(["id", "title", "label", "authors", "year", "venue", "doi", "url", "pdf", "modality", "methods", "key_finding", "abstract", "related", "builds_on", "see_also", "projects", "status", "tags_provenance", "notes", "added", "updated", "schema_version"]);
+const KNOWN_FM = new Set(["id", "title", "label", "authors", "year", "venue", "doi", "url", "pdf", "modality", "methods", "key_finding", "abstract", "related", "builds_on", "see_also", "projects", "status", "tag_evidence", "notes", "added", "updated", "schema_version"]);
 const STMAP = { draft: "unverified", reviewed: "verified", needs_fixing: "flagged" };
 
 function normalizePaper(fm, sec) {
@@ -139,7 +139,7 @@ function normalizePaper(fm, sec) {
     key_finding: fm.key_finding || "", abstract: (sec && sec.abstract) || fm.abstract || "",
     builds_on: fm.builds_on || fm.related || [], see_also: fm.see_also || [],
     projects: fm.projects || [], status: STMAP[fm.status] || fm.status || "unverified",
-    tags_provenance: Array.isArray(fm.tags_provenance) ? fm.tags_provenance : [],
+    tag_evidence: Array.isArray(fm.tag_evidence) ? fm.tag_evidence : [],
     notes: (sec && sec.notes) || fm.notes || "",
     added: fm.added || "", updated: fm.updated || "",
   };
@@ -152,7 +152,7 @@ function indexRecord(p) {
     venue: p.venue, doi: p.doi || undefined, url: p.url || undefined, pdf: p.pdf || undefined,
     modality: p.modality, methods: p.methods, key_finding: p.key_finding, abstract: p.abstract,
     builds_on: p.builds_on, see_also: p.see_also, projects: p.projects, status: p.status,
-    tags_provenance: p.tags_provenance, notes: p.notes || undefined,
+    tag_evidence: p.tag_evidence, notes: p.notes || undefined,
     added: p.added || undefined, updated: p.updated || undefined,
     ...(p.facets || {}),
   };

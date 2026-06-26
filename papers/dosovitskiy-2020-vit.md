@@ -22,7 +22,7 @@ datasets: [imagenet, jft300m]
 tasks: [image-classification]
 tools: [jax]
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "transformer"
     source: abstract

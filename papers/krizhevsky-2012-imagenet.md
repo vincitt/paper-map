@@ -19,7 +19,7 @@ datasets: [imagenet]
 tasks: [image-classification]
 tools: [cuda-convnet]
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "dropout"
     source: methods
