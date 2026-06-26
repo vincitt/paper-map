@@ -21,6 +21,15 @@
     "deep belief network",
     "encoder-decoder"
   ],
+  "lane_order": [
+    "CNN",
+    "deep belief network",
+    "word embeddings",
+    "RNN",
+    "attention",
+    "self-attention",
+    "transformer"
+  ],
   "modality_vocab": [
     "vision",
     "text",
@@ -28,9 +37,9 @@
   ],
   "default_lens": "methods",
   "palette": {
-    "vision": "#4e79a7",
-    "text": "#59a14f",
-    "general": "#b07aa1"
+    "vision": "#2f6fb0",
+    "text": "#0e8457",
+    "general": "#8a5cd1"
   },
   "facets": [
     {

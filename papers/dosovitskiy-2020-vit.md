@@ -1,6 +1,7 @@
 ---
 id: dosovitskiy-2020-vit
 title: "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
+label: "ViT"
 authors:
   - name: "Alexey Dosovitskiy"
   - name: "Lucas Beyer"

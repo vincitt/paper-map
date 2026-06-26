@@ -1,6 +1,7 @@
 ---
 id: brown-2020-gpt3
 title: "Language Models are Few-Shot Learners"
+label: "GPT-3"
 authors:
   - name: "Tom B. Brown"
   - name: "Benjamin Mann"

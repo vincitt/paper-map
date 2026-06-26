@@ -1,6 +1,7 @@
 ---
 id: bahdanau-2015-attention
 title: "Neural Machine Translation by Jointly Learning to Align and Translate"
+label: "Bahdanau"
 authors:
   - name: "Dzmitry Bahdanau"
   - name: "Kyunghyun Cho"
