@@ -1,0 +1,183 @@
+{
+  "schema_version": "1.0",
+  "generated": "2026-06-25T12:00:00Z",
+  "entities": [
+    {
+      "id": "mnist",
+      "type": "dataset",
+      "name": "MNIST",
+      "description": "Handwritten-digit images; the canonical small vision benchmark.",
+      "modality": "vision",
+      "year": 1998,
+      "size": "70k images",
+      "access": "open",
+      "url": "http://yann.lecun.com/exdb/mnist/"
+    },
+    {
+      "id": "imagenet",
+      "type": "dataset",
+      "name": "ImageNet (ILSVRC)",
+      "description": "Large-scale labelled image database that catalysed deep learning for vision.",
+      "modality": "vision",
+      "year": 2009,
+      "size": "1.2M images / 1000 classes",
+      "access": "open",
+      "url": "https://image-net.org"
+    },
+    {
+      "id": "google-news",
+      "type": "dataset",
+      "name": "Google News corpus",
+      "description": "Large internal news-text corpus used to train word2vec embeddings.",
+      "modality": "text",
+      "year": 2013,
+      "size": "~100B tokens",
+      "access": "proprietary"
+    },
+    {
+      "id": "wmt14-enfr",
+      "type": "dataset",
+      "name": "WMT'14 English–French",
+      "description": "Standard machine-translation benchmark, English to French.",
+      "modality": "text",
+      "year": 2014,
+      "size": "36M sentence pairs",
+      "access": "open",
+      "url": "https://www.statmt.org/wmt14/"
+    },
+    {
+      "id": "wmt14-ende",
+      "type": "dataset",
+      "name": "WMT'14 English–German",
+      "description": "Standard machine-translation benchmark, English to German.",
+      "modality": "text",
+      "year": 2014,
+      "size": "4.5M sentence pairs",
+      "access": "open",
+      "url": "https://www.statmt.org/wmt14/"
+    },
+    {
+      "id": "bookcorpus",
+      "type": "dataset",
+      "name": "BookCorpus",
+      "description": "Free novels used for unsupervised language-model pretraining.",
+      "modality": "text",
+      "year": 2015,
+      "size": "~800M words",
+      "access": "restricted"
+    },
+    {
+      "id": "wikipedia",
+      "type": "dataset",
+      "name": "English Wikipedia",
+      "description": "Encyclopaedic text widely used for pretraining.",
+      "modality": "text",
+      "year": 2018,
+      "size": "~2.5B words",
+      "access": "open",
+      "url": "https://dumps.wikimedia.org"
+    },
+    {
+      "id": "common-crawl",
+      "type": "dataset",
+      "name": "Common Crawl (filtered)",
+      "description": "Web-scale text corpus, filtered, used to train large language models.",
+      "modality": "text",
+      "year": 2020,
+      "size": "~400B tokens",
+      "access": "open",
+      "url": "https://commoncrawl.org"
+    },
+    {
+      "id": "jft300m",
+      "type": "dataset",
+      "name": "JFT-300M",
+      "description": "Very large internal Google image dataset used for large-scale pretraining.",
+      "modality": "vision",
+      "year": 2017,
+      "size": "~300M images",
+      "access": "proprietary"
+    },
+    {
+      "id": "image-classification",
+      "type": "task",
+      "name": "Image Classification",
+      "description": "Assign a category label to an image."
+    },
+    {
+      "id": "representation-learning",
+      "type": "task",
+      "name": "Representation Learning",
+      "description": "Learn reusable feature representations, often without labels."
+    },
+    {
+      "id": "word-representation",
+      "type": "task",
+      "name": "Word Representation",
+      "description": "Learn dense vector representations of words."
+    },
+    {
+      "id": "machine-translation",
+      "type": "task",
+      "name": "Machine Translation",
+      "description": "Translate text from one language into another."
+    },
+    {
+      "id": "language-modeling",
+      "type": "task",
+      "name": "Language Modeling",
+      "description": "Predict the next token in a sequence of text."
+    },
+    {
+      "id": "language-understanding",
+      "type": "task",
+      "name": "Language Understanding",
+      "description": "Downstream natural-language understanding tasks (e.g. GLUE)."
+    },
+    {
+      "id": "cuda-convnet",
+      "type": "tool",
+      "name": "cuda-convnet",
+      "description": "Krizhevsky's high-performance CUDA convolutional-network code.",
+      "language": "CUDA/C++",
+      "year": 2012,
+      "url": "https://code.google.com/archive/p/cuda-convnet/"
+    },
+    {
+      "id": "distbelief",
+      "type": "tool",
+      "name": "DistBelief",
+      "description": "Google's first-generation large-scale distributed deep-learning framework.",
+      "language": "C++",
+      "year": 2012,
+      "access": "proprietary"
+    },
+    {
+      "id": "theano",
+      "type": "tool",
+      "name": "Theano",
+      "description": "Early Python framework for symbolic math and GPU deep learning.",
+      "language": "Python",
+      "year": 2010,
+      "url": "https://github.com/Theano/Theano"
+    },
+    {
+      "id": "tensorflow",
+      "type": "tool",
+      "name": "TensorFlow",
+      "description": "Open-source machine-learning framework from Google.",
+      "language": "Python/C++",
+      "year": 2015,
+      "url": "https://www.tensorflow.org"
+    },
+    {
+      "id": "jax",
+      "type": "tool",
+      "name": "JAX",
+      "description": "NumPy-compatible autodiff + XLA compilation for ML research.",
+      "language": "Python",
+      "year": 2018,
+      "url": "https://github.com/google/jax"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "app_name": "Paper Map",
+  "title": "Foundations of Modern Deep Learning (demo)",
+  "focal_authors": [
+    "Geoffrey Hinton",
+    "Ilya Sutskever"
+  ],
+  "methods_vocab": [
+    "CNN",
+    "RNN",
+    "LSTM",
+    "attention",
+    "self-attention",
+    "transformer",
+    "word embeddings",
+    "dropout",
+    "backpropagation",
+    "pretraining",
+    "masked language modeling",
+    "in-context learning",
+    "deep belief network",
+    "encoder-decoder"
+  ],
+  "modality_vocab": [
+    "vision",
+    "text",
+    "general"
+  ],
+  "default_lens": "methods",
+  "palette": {
+    "vision": "#4e79a7",
+    "text": "#59a14f",
+    "general": "#b07aa1"
+  },
+  "facets": [
+    {
+      "key": "methods",
+      "label": "Methods",
+      "singular": "method",
+      "builtin": true,
+      "link": false
+    },
+    {
+      "key": "datasets",
+      "label": "Datasets",
+      "singular": "dataset",
+      "entity": true,
+      "link": true
+    },
+    {
+      "key": "tasks",
+      "label": "Tasks",
+      "singular": "task",
+      "entity": true,
+      "link": true
+    },
+    {
+      "key": "tools",
+      "label": "Tools",
+      "singular": "tool",
+      "entity": true,
+      "link": true
+    }
+  ],
+  "task_vocab": [
+    "image-classification",
+    "representation-learning",
+    "word-representation",
+    "machine-translation",
+    "language-modeling",
+    "language-understanding"
+  ]
+}

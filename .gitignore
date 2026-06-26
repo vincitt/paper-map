@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Internal design docs — keep local, not published
+DESIGN_SPEC.md
+
+# Optional: local PDFs can be large and/or copyrighted — uncomment to keep them
+# out of the published repo and link by DOI/URL instead.
+# papers/pdfs/
+
+# Editor cruft
+*.swp
+.idea/
+.vscode/

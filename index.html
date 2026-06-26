@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Map</title>
+<style>
+/* ============================ Design tokens (DESIGN_SPEC §0.9) ============================ */
+:root{
+  --bg:#faf9f5; --bg-sunken:#f3f1ea; --surface:#ffffff; --hover:#fbfaf7; --active:#f6f3ec;
+  --ink:#1c1a17; --ink-2:#57534c; --ink-3:#78736a; --placeholder:#9c968b;
+  --border:#e9e6df; --border-strong:#d8d3c8; --border-light:#f0ede6;
+  --accent:#cf7152; --accent-hover:#bd6244; --accent-active:#a8543a; --accent-soft:#fbeee7; --accent-soft-border:#f0d8cb; --accent-text:#a8543a;
+  --draft-bg:#fdf6e9; --draft-text:#8a5a12; --draft-line:#d9a441;
+  --ok-bg:#eaf3ea; --ok-text:#3f7437; --ok-line:#5a9a4e;
+  --warn-bg:#fbe9e4; --warn-text:#9c3b1e; --warn-line:#c0532f;
+  --focus:#2d6cdf;
+  --r-chip:4px; --r-card:8px; --r-panel:12px; --r-pill:999px;
+  --shadow-1:0 1px 2px rgba(40,33,24,.05),0 1px 1px rgba(40,33,24,.04);
+  --shadow-2:0 4px 14px rgba(40,33,24,.10),0 1px 3px rgba(40,33,24,.06);
+  --shadow-panel:-6px 0 24px rgba(40,33,24,.10);
+  --font:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#e0dccf;border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+::placeholder{color:var(--placeholder)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.tnum{font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+
+/* ============================ Shell ============================ */
+#root{position:fixed;inset:0;display:flex;flex-direction:column}
+header.shell{height:56px;flex:none;display:flex;align-items:center;gap:18px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--bg);z-index:30}
+.wordmark{display:flex;align-items:center;gap:9px;cursor:pointer;flex:none}
+.wordmark .name{font-weight:600;font-size:16px;letter-spacing:-.01em}
+.wordmark .dot{color:#c9c3b6}
+.wordmark .corpus{color:var(--ink-2);font-size:13.5px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav.tabs{display:flex;align-items:center;gap:4px}
+nav.tabs button{position:relative;padding:6px 12px;border-radius:6px;color:var(--ink-3);font-size:14.5px;font-weight:500;display:flex;align-items:center;gap:7px}
+nav.tabs button:hover{color:var(--ink-2);background:var(--hover)}
+nav.tabs button.active{color:var(--ink);font-weight:600}
+nav.tabs button.active::after{content:"";position:absolute;left:12px;right:12px;bottom:-12px;height:2px;background:var(--accent);border-radius:2px}
+nav.tabs button:disabled{opacity:.4;cursor:default}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--border);color:var(--ink-2);font-size:11.5px;font-weight:600}
+.spacer{flex:1}
+.search{position:relative;width:300px}
+.search input{width:100%;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:0 30px 0 32px;font-size:14px}
+.search .ico{position:absolute;left:9px;top:8px;color:var(--ink-3)}
+.search kbd{position:absolute;right:8px;top:7px;font-size:11px;color:var(--ink-3);border:1px solid var(--border);border-radius:4px;padding:1px 5px;background:var(--bg)}
+.statusread{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-3);flex:none}
+.statusread .ok{color:var(--ok-text)}
+.statusread .saving{color:var(--draft-text)}
+.statusread .err{color:var(--warn-text)}
+.modechip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:12.5px;color:var(--ink-2);flex:none}
+.iconbtn{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--ink-3)}
+.iconbtn:hover{background:var(--hover);color:var(--ink-2)}
+
+.subheader{height:44px;flex:none;display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--bg);font-size:13px;color:var(--ink-2)}
+.subheader .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.main{flex:1;min-height:0;position:relative;display:flex}
+
+/* ============================ Buttons ============================ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 16px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);font-weight:550;font-size:14px;color:var(--ink)}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.sm{height:30px;padding:0 11px;font-size:13px;font-weight:500;gap:5px}
+.btn:disabled{opacity:.45;cursor:default}
+.toggle{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer;user-select:none}
+.toggle .sw{width:30px;height:18px;border-radius:999px;background:var(--border-strong);position:relative;transition:background .15s}
+.toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.on .sw{background:var(--accent)}
+.toggle.on .sw::after{left:14px}
+
+/* ============================ Chips ============================ */
+.chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:var(--r-chip);border:1px solid var(--border);background:var(--surface);font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.chip .diamond{width:7px;height:7px;background:var(--accent);transform:rotate(45deg);flex:none}
+.chip.proj{color:var(--ink-3)}
+.chip.modality{font-weight:550;color:var(--ink)}
+.chip.modality .swatch{width:10px;height:10px;flex:none}
+.prov-dot{width:7px;height:7px;border-radius:50%;flex:none}
+.prov-dot.has{background:var(--ok-line)}
+.prov-dot.none{background:transparent;border:1.4px solid var(--border-strong)}
+.statusbadge{display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 9px;border-radius:var(--r-pill);font-size:12px;font-weight:600}
+.statusbadge.unverified{background:var(--draft-bg);color:var(--draft-text)}
+.statusbadge.verified{background:var(--ok-bg);color:var(--ok-text)}
+.statusbadge.flagged{background:var(--warn-bg);color:var(--warn-text)}
+.warnbadge{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:var(--r-pill);font-size:11.5px;font-weight:600;background:var(--warn-bg);color:var(--warn-text)}
+
+/* ============================ Library ============================ */
+.library{display:flex;width:100%;min-height:0}
+.rail{width:228px;flex:none;border-right:1px solid var(--border);overflow-y:auto;padding:14px 0}
+.rail .railhead{display:flex;align-items:center;justify-content:space-between;padding:0 16px 6px}
+.rail .railhead .t{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-3)}
+.rail .railhead a{font-size:12px;color:var(--accent-text);cursor:pointer}
+.facet{padding:8px 0}
+.facet>.h{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--ink-3);cursor:pointer}
+.facet>.h .chev{transition:transform .15s}
+.facet.collapsed .chev{transform:rotate(-90deg)}
+.facet.collapsed .opts{display:none}
+.opt{display:flex;align-items:center;gap:9px;padding:4px 16px;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+.opt:hover{background:var(--hover)}
+.opt .cbx{width:15px;height:15px;border:1.5px solid var(--border-strong);border-radius:4px;flex:none;display:flex;align-items:center;justify-content:center}
+.opt.on .cbx{background:var(--accent);border-color:var(--accent);color:#fff}
+.opt .lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.opt .cnt{color:var(--ink-3);font-size:12px}
+.opt .sw{width:10px;height:10px;flex:none}
+
+.listwrap{flex:1;min-width:0;overflow-y:auto}
+.row{padding:14px 22px;border-bottom:1px solid var(--border-light);cursor:pointer;position:relative}
+.row:hover{background:var(--hover)}
+.row.sel{background:var(--accent-soft)}
+.row.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.row .r1{display:flex;align-items:flex-start;gap:12px}
+.row .title{font-weight:600;font-size:15.5px;color:var(--ink);flex:1;letter-spacing:-.005em}
+.row .meta{margin-top:3px;font-size:13px;color:var(--ink-3)}
+.row .chips{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px}
+.row.compact .meta,.row.compact .chips{display:none}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--ink-3);gap:10px;padding:40px}
+.skel{height:14px;background:linear-gradient(90deg,#efece4,#f6f4ee,#efece4);background-size:200% 100%;border-radius:6px;animation:sk 1.2s infinite}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* dropdowns */
+.menu{position:relative}
+.menu .pop{position:absolute;top:36px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-2);padding:5px;min-width:150px;z-index:40}
+.menu .pop button{display:block;width:100%;text-align:left;padding:7px 10px;border-radius:6px;font-size:13.5px}
+.menu .pop button:hover{background:var(--hover)}
+.menu .pop button.on{color:var(--accent-text);font-weight:600}
+.densbtns{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.densbtns button{width:34px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--ink-3)}
+.densbtns button.on{background:var(--active);color:var(--ink)}
+
+/* ============================ Detail panel ============================ */
+.scrim{position:absolute;inset:0;background:rgba(28,26,23,.10);z-index:50;opacity:0;animation:fade .15s forwards}
+@keyframes fade{to{opacity:1}}
+.panel{position:absolute;top:0;right:0;bottom:0;width:460px;max-width:100%;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow-panel);z-index:51;display:flex;flex-direction:column;animation:slide .2s cubic-bezier(.2,.7,.3,1)}
+@keyframes slide{from{transform:translateX(28px);opacity:.6}to{transform:translateX(0);opacity:1}}
+@media(max-width:768px){.panel{width:100%}}
+.panel .phead{height:52px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--border)}
+.panel .pbody{flex:1;overflow-y:auto;padding:18px 22px 90px}
+.panel .pfoot{position:absolute;left:0;right:0;bottom:0;padding:12px 16px;background:linear-gradient(to top,var(--surface) 70%,transparent)}
+.navbtn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+.navbtn:hover{background:var(--hover)}
+.navbtn:disabled{opacity:.4}
+.statuspill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:var(--r-pill);font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.statuspill.unverified{background:var(--draft-bg);color:var(--draft-text);border-color:#f0e3c4}
+.statuspill.verified{background:var(--ok-bg);color:var(--ok-text);border-color:#cfe6cd}
+.statuspill.flagged{background:var(--warn-bg);color:var(--warn-text);border-color:#f2d2c8}
+.ptitle{font-size:21px;font-weight:650;letter-spacing:-.015em;line-height:1.28;margin:4px 0 12px}
+.authorline{display:flex;flex-wrap:wrap;gap:x;gap:10px 14px;font-size:13.5px;color:var(--ink-2);margin-bottom:8px}
+.authorchip{display:inline-flex;align-items:center;gap:6px}
+.authorchip .ad{width:7px;height:7px;border-radius:50%}
+.authorchip .ad.int{background:var(--accent)}
+.authorchip .ad.ext{background:transparent;border:1.4px solid var(--border-strong)}
+.metaline{font-size:13px;color:var(--ink-3);margin-bottom:14px}
+.pactions{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.seclabel{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--ink-3);margin:18px 0 8px}
+.tagrow{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.kf{font-size:14.5px;color:var(--ink);line-height:1.45}
+.abstract{font-size:13.5px;color:var(--ink-2);line-height:1.6}
+.relitem{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13.5px;color:var(--ink-2);cursor:pointer}
+.relitem:hover{color:var(--accent-text)}
+.relitem.broken{color:var(--warn-text);cursor:default;text-decoration:line-through}
+.notesedit{width:100%;min-height:70px;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13.5px;resize:vertical;background:var(--bg)}
+.kfedit{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:14px;background:var(--bg)}
+.provfoot{margin-top:22px;padding-top:12px;border-top:1px solid var(--border-light);font-size:11.5px;color:var(--ink-3)}
+.miniadd{height:24px;padding:0 8px;border:1px dashed var(--border-strong);border-radius:var(--r-chip);font-size:12px;color:var(--ink-3)}
+.chip .x{margin-left:2px;color:var(--ink-3);cursor:pointer}
+.chip .x:hover{color:var(--warn-text)}
+
+/* provenance popover */
+.provpop{position:fixed;z-index:80;max-width:320px;background:#2a2722;color:#f3efe7;border-radius:9px;padding:11px 13px;font-size:12.5px;line-height:1.5;box-shadow:var(--shadow-2);pointer-events:none}
+.provpop .q{font-style:italic;color:#fff;margin-bottom:7px}
+.provpop .m{color:#cfc8ba;font-size:11.5px;display:flex;gap:10px}
+
+/* ============================ Review ============================ */
+.review{width:100%;overflow:auto;background:var(--bg-sunken);padding:18px;display:flex;gap:16px}
+.lane{flex:1;min-width:280px;max-width:380px;display:flex;flex-direction:column}
+.lane .lh{display:flex;align-items:center;gap:8px;padding:4px 6px 12px;font-weight:650;font-size:14px}
+.lane .ld{width:9px;height:9px;border-radius:50%}
+.lane.unverified .ld{background:var(--draft-line)} .lane.flagged .ld{background:var(--warn-line)} .lane.verified .ld{background:var(--ok-line)}
+.lane .cards{flex:1;min-height:60px;display:flex;flex-direction:column;gap:10px;padding:4px;border-radius:10px}
+.lane .cards.dragover{background:var(--accent-soft);outline:2px dashed var(--accent-soft-border)}
+.kcard{background:var(--surface);border:1px solid var(--border);border-left-width:3px;border-radius:var(--r-card);padding:11px 13px;box-shadow:var(--shadow-1);cursor:grab}
+.kcard.unverified{border-left-color:var(--draft-line)} .kcard.flagged{border-left-color:var(--warn-line)} .kcard.verified{border-left-color:var(--ok-line)}
+.kcard.dragging{opacity:.5}
+.kcard .kt{font-weight:600;font-size:14px;line-height:1.3;margin-bottom:4px}
+.kcard .km{font-size:12.5px;color:var(--ink-3)}
+.kcard .kchips{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px}
+.kcard .kprov{margin-top:8px;font-size:12px;color:var(--ink-3);font-style:italic;display:flex;gap:5px}
+.reviewed-collapsed{display:flex;flex-direction:column;gap:6px;padding:4px}
+.rc{height:30px;border-radius:6px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--ok-line);display:flex;align-items:center;padding:0 10px;font-size:12.5px;color:var(--ink-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+/* ============================ Map ============================ */
+.map{position:relative;width:100%;overflow:hidden;background:var(--bg);background-image:radial-gradient(var(--border-light) 1px,transparent 1px);background-size:22px 22px}
+.map svg{width:100%;height:100%;display:block;cursor:grab}
+.map svg.grab{cursor:grabbing}
+.lensswitch{position:absolute;top:14px;left:14px;z-index:10;display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:var(--shadow-1)}
+.lensswitch button{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:7px;font-size:13.5px;font-weight:500;color:var(--ink-3)}
+.lensswitch button.on{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+.legend{position:absolute;left:14px;bottom:14px;z-index:10;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-1);min-width:170px;max-width:230px}
+.legend .lgh{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--ink-3);cursor:pointer}
+.legend .lgbody{padding:2px 12px 11px;display:flex;flex-direction:column;gap:7px}
+.legend.collapsed .lgbody{display:none}
+.legend .li{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-2)}
+.zoomctl{position:absolute;right:14px;bottom:14px;z-index:10;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:9px;overflow:hidden;box-shadow:var(--shadow-1)}
+.zoomctl button{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--ink-2);border-bottom:1px solid var(--border)}
+.zoomctl button:last-child{border-bottom:none}
+.zoomctl button:hover{background:var(--hover)}
+.maptip{position:fixed;z-index:80;background:#2a2722;color:#f3efe7;border-radius:7px;padding:7px 10px;font-size:12px;max-width:240px;pointer-events:none;box-shadow:var(--shadow-2)}
+text{font-family:var(--font)}
+
+/* ============================ Welcome ============================ */
+.welcome{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;overflow:auto}
+.welcome h1{font-size:34px;font-weight:680;letter-spacing:-.02em;margin:0 0 8px}
+.welcome .tag{font-size:16px;color:var(--ink-2);margin-bottom:34px}
+.wcards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+.wcard{width:300px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;text-align:left;box-shadow:var(--shadow-1)}
+.wcard .ic{width:42px;height:42px;border-radius:11px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent-text);margin-bottom:14px}
+.wcard h3{margin:0 0 6px;font-size:17px}
+.wcard p{margin:0 0 16px;font-size:13.5px;color:var(--ink-2);min-height:40px}
+.wcard .btn{width:100%}
+.wfoot{margin-top:30px;display:flex;gap:18px;font-size:13px}
+.wfoot a{color:var(--accent-text);cursor:pointer}
+.wnote{margin-top:14px;font-size:12.5px;color:var(--ink-3)}
+.banner{display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--draft-bg);color:var(--draft-text);font-size:13px;border-bottom:1px solid #f0e3c4}
+.banner.warn{background:var(--warn-bg);color:var(--warn-text);border-color:#f2d2c8}
+.banner .grow{flex:1}
+.banner button{font-weight:600;text-decoration:underline}
+
+.chip.ent{color:var(--ink-2);cursor:pointer}
+.chip.ent:hover{background:var(--hover);border-color:var(--border-strong)}
+.chip.ent svg{color:var(--ink-3)}
+.metarows{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
+.metarow{display:flex;gap:10px;font-size:13px}
+.metarow .mk{color:var(--ink-3);min-width:80px;text-transform:capitalize}
+.metarow .mv{color:var(--ink)}
+.metarow a{color:var(--accent-text);word-break:break-all}
+.metaedit{flex:1;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;background:var(--bg)}
+.enttitle-edit{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:19px;font-weight:600;background:var(--bg);margin-bottom:6px}
+.fpick{padding:4px 10px;border-radius:6px;font-size:12.5px;color:var(--ink-2);border:1px solid transparent;cursor:pointer}
+.fpick.on{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+.fpick:hover{background:var(--hover)}
+.entities{width:100%;overflow:auto;padding:20px 26px}
+.entgroup{margin-bottom:26px}
+.entgrouph{font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--ink-3);text-transform:uppercase;margin-bottom:11px;display:flex;gap:8px;align-items:center}
+.entgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.entcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;cursor:pointer;box-shadow:var(--shadow-1)}
+.entcard:hover{background:var(--hover);border-color:var(--border-strong)}
+.entname{font-weight:600;font-size:14.5px;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.entmeta{font-size:12.5px;color:var(--ink-3)}
+.modalscrim{position:fixed;inset:0;background:rgba(28,26,23,.30);z-index:70}
+.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:71;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-2);width:640px;max-width:calc(100% - 32px);max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
+.modalhead{display:flex;align-items:center;padding:15px 18px;border-bottom:1px solid var(--border)}
+.modalhead h2{margin:0;font-size:16.5px}
+.modalbody{padding:16px 20px 22px;overflow-y:auto}
+.codeblock{position:relative;background:var(--bg-sunken);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;color:var(--ink-2);margin:8px 0}
+.copybtn{position:absolute;top:8px;right:8px;height:26px;padding:0 10px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);font-size:12px;cursor:pointer}
+.copybtn:hover{background:var(--hover)}
+.howstep{display:flex;gap:12px;margin:12px 0}
+.hownum{flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.howstep b{font-size:14px}
+.howstep p{margin:3px 0 0;font-size:13px;color:var(--ink-2)}
+.kbd{display:inline-block;border:1px solid var(--border-strong);border-radius:4px;padding:0 6px;font-size:11.5px;background:var(--bg);font-family:ui-monospace,monospace}
+.kbdrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;color:var(--ink-2)}
+code{background:var(--bg-sunken);border-radius:4px;padding:1px 5px;font-family:ui-monospace,monospace;font-size:12.5px}
+.dot{color:#c9c3b6;flex:none}
+.corpusbtn{display:flex;align-items:center;gap:5px;color:var(--ink-2);font-size:13.5px;max-width:260px;padding:3px 8px;border-radius:6px;cursor:pointer}
+.corpusbtn:hover{background:var(--hover);color:var(--ink)}
+.corpusbtn .ct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.corpusbtn svg{color:var(--ink-3);flex:none}
+.popsec{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);padding:8px 10px 3px}
+.pop button svg{vertical-align:-2px;margin-right:6px;color:var(--ink-3)}
+.ft{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+.ft th{text-align:left;color:var(--ink-3);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--border)}
+.ft td{padding:5px 8px;border-bottom:1px solid var(--border-light);vertical-align:top;color:var(--ink-2)}
+.ft td:first-child{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--ink);white-space:nowrap}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2a2722;color:#fff;padding:10px 16px;border-radius:9px;font-size:13.5px;z-index:90;box-shadow:var(--shadow-2)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+"use strict";
+/* ===== Inlined demo corpus (injected from repo index.json / papermap.config.json) ===== */
+const DEMO = {"schema_version": "1.0", "generated": "2026-06-25T12:00:00Z", "title": "Foundations of Modern Deep Learning (demo)", "papers": [{"id": "lecun-1998-gradient", "title": "Gradient-Based Learning Applied to Document Recognition", "authors": [{"name": "Yann LeCun"}, {"name": "Léon Bottou"}, {"name": "Yoshua Bengio"}, {"name": "Patrick Haffner"}], "year": 1998, "venue": "Proceedings of the IEEE", "doi": "10.1109/5.726791", "modality": "vision", "methods": ["CNN", "backpropagation"], "key_finding": "End-to-end trained convolutional networks beat hand-engineered features for document recognition.", "abstract": "Reviews gradient-based learning for pattern recognition and shows that convolutional neural networks trained by backpropagation outperform hand-designed feature pipelines on handwritten digit and document recognition.", "builds_on": [], "see_also": [], "projects": ["Foundations", "Vision line"], "status": "verified", "tags_provenance": [{"field": "method", "value": "CNN", "source": "abstract", "quote": "Convolutional neural networks are specifically designed to deal with the variability of 2-D shapes.", "by": "llm", "confidence": 0.95}, {"field": "key_finding", "value": "key_finding", "source": "results", "quote": "Better pattern recognition systems can be built by relying more on automatic learning and less on hand-designed heuristics.", "by": "human"}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["mnist"], "tasks": ["image-classification"], "tools": []}, {"id": "hinton-2006-fast", "title": "A Fast Learning Algorithm for Deep Belief Nets", "authors": [{"name": "Geoffrey Hinton"}, {"name": "Simon Osindero"}, {"name": "Yee-Whye Teh"}], "year": 2006, "venue": "Neural Computation", "doi": "10.1162/neco.2006.18.7.1527", "modality": "general", "methods": ["deep belief network", "pretraining"], "key_finding": "Greedy layer-wise unsupervised pretraining makes very deep networks trainable.", "abstract": "Introduces a fast, greedy layer-by-layer algorithm for learning deep belief networks one layer at a time, reviving the practical training of deep architectures.", "builds_on": [], "see_also": [], "projects": ["Foundations"], "status": "verified", "tags_provenance": [{"field": "method", "value": "deep belief network", "source": "abstract", "quote": "We derive a fast, greedy algorithm that can learn deep, directed belief networks one layer at a time.", "by": "llm", "confidence": 0.93}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["mnist"], "tasks": ["representation-learning"], "tools": []}, {"id": "krizhevsky-2012-imagenet", "title": "ImageNet Classification with Deep Convolutional Neural Networks", "authors": [{"name": "Alex Krizhevsky"}, {"name": "Ilya Sutskever"}, {"name": "Geoffrey Hinton"}], "year": 2012, "venue": "NeurIPS", "url": "https://papers.nips.cc/paper/4824", "modality": "vision", "methods": ["CNN", "dropout"], "key_finding": "A large GPU-trained CNN with dropout and ReLU roughly halved ImageNet error.", "abstract": "Trains a large deep convolutional network (AlexNet) on ImageNet using ReLU units, GPU training, and dropout regularization, dramatically lowering top-5 error and igniting the deep-learning era for vision.", "builds_on": ["lecun-1998-gradient", "hinton-2006-fast"], "see_also": [], "projects": ["Vision line"], "status": "verified", "tags_provenance": [{"field": "method", "value": "dropout", "source": "methods", "quote": "Recently-developed regularization method called dropout proved very effective at reducing overfitting.", "by": "llm", "confidence": 0.9}, {"field": "key_finding", "value": "key_finding", "source": "abstract", "quote": "On the test data we achieved top-5 error rates considerably better than the previous state of the art.", "by": "human"}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["imagenet"], "tasks": ["image-classification"], "tools": ["cuda-convnet"]}, {"id": "mikolov-2013-word2vec", "title": "Efficient Estimation of Word Representations in Vector Space", "authors": [{"name": "Tomáš Mikolov"}, {"name": "Kai Chen"}, {"name": "Greg Corrado"}, {"name": "Jeffrey Dean"}], "year": 2013, "venue": "ICLR Workshop", "url": "https://arxiv.org/abs/1301.3781", "modality": "text", "methods": ["word embeddings"], "key_finding": "Shallow log-linear models learn high-quality word vectors at scale, cheaply.", "abstract": "Proposes the continuous bag-of-words and skip-gram architectures (word2vec) for learning distributed word representations efficiently from very large corpora.", "builds_on": [], "see_also": [], "projects": ["Language line"], "status": "verified", "tags_provenance": [{"field": "method", "value": "word embeddings", "source": "abstract", "quote": "We propose two novel model architectures for computing continuous vector representations of words from very large data sets.", "by": "llm", "confidence": 0.94}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["google-news"], "tasks": ["word-representation"], "tools": []}, {"id": "sutskever-2014-seq2seq", "title": "Sequence to Sequence Learning with Neural Networks", "authors": [{"name": "Ilya Sutskever"}, {"name": "Oriol Vinyals"}, {"name": "Quoc V. Le"}], "year": 2014, "venue": "NeurIPS", "url": "https://arxiv.org/abs/1409.3215", "modality": "text", "methods": ["RNN", "LSTM", "encoder-decoder"], "key_finding": "An LSTM encoder–decoder maps whole sequences to sequences, enabling neural machine translation.", "abstract": "Presents a general end-to-end sequence-to-sequence approach using multilayered LSTMs to encode an input sequence to a fixed vector and decode the target sequence, achieving strong machine-translation results.", "builds_on": [], "see_also": ["mikolov-2013-word2vec"], "projects": ["Language line"], "status": "verified", "tags_provenance": [{"field": "method", "value": "LSTM", "source": "abstract", "quote": "We use a multilayered Long Short-Term Memory to map the input sequence to a vector of a fixed dimensionality.", "by": "llm", "confidence": 0.92}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["wmt14-enfr"], "tasks": ["machine-translation"], "tools": ["distbelief"]}, {"id": "bahdanau-2015-attention", "title": "Neural Machine Translation by Jointly Learning to Align and Translate", "authors": [{"name": "Dzmitry Bahdanau"}, {"name": "Kyunghyun Cho"}, {"name": "Yoshua Bengio"}], "year": 2015, "venue": "ICLR", "url": "https://arxiv.org/abs/1409.0473", "modality": "text", "methods": ["attention", "encoder-decoder", "RNN"], "key_finding": "Letting the decoder attend over source positions removes seq2seq's fixed-vector bottleneck.", "abstract": "Introduces an attention mechanism that lets a neural translation model softly search the source sentence for relevant positions when generating each target word, improving translation of long sentences.", "builds_on": ["sutskever-2014-seq2seq"], "see_also": [], "projects": ["Language line"], "status": "flagged", "tags_provenance": [{"field": "method", "value": "attention", "source": "abstract", "quote": "The model (soft-)searches for a set of positions in a source sentence where the most relevant information is concentrated.", "by": "llm", "confidence": 0.91}], "added": "2026-06-25", "updated": "2026-06-25", "notes": "Review: confirm whether to add a see_also link to word2vec; double-check author affiliations before marking reviewed.", "datasets": ["wmt14-enfr"], "tasks": ["machine-translation"], "tools": ["theano"]}, {"id": "vaswani-2017-transformer", "title": "Attention Is All You Need", "authors": [{"name": "Ashish Vaswani"}, {"name": "Noam Shazeer"}, {"name": "Niki Parmar"}, {"name": "Jakob Uszkoreit"}, {"name": "Llion Jones"}, {"name": "Aidan N. Gomez"}, {"name": "Łukasz Kaiser"}, {"name": "Illia Polosukhin"}], "year": 2017, "venue": "NeurIPS", "url": "https://arxiv.org/abs/1706.03762", "modality": "text", "methods": ["self-attention", "transformer"], "key_finding": "Replacing recurrence with pure self-attention sets new translation SOTA and parallelizes training.", "abstract": "Proposes the Transformer, a sequence-transduction architecture based solely on self-attention without recurrence or convolution, achieving state-of-the-art translation quality with far more parallelizable training.", "builds_on": ["bahdanau-2015-attention", "sutskever-2014-seq2seq"], "see_also": [], "projects": ["Language line", "Survey/Bridges"], "status": "verified", "tags_provenance": [{"field": "method", "value": "self-attention", "source": "abstract", "quote": "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.", "by": "human"}, {"field": "key_finding", "value": "key_finding", "source": "results", "quote": "Our model achieves a new state of the art while being more parallelizable and requiring significantly less time to train.", "by": "llm", "confidence": 0.96}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["wmt14-ende", "wmt14-enfr"], "tasks": ["machine-translation"], "tools": ["tensorflow"]}, {"id": "devlin-2018-bert", "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding", "authors": [{"name": "Jacob Devlin"}, {"name": "Ming-Wei Chang"}, {"name": "Kenton Lee"}, {"name": "Kristina Toutanova"}], "year": 2018, "venue": "NAACL", "url": "https://arxiv.org/abs/1810.04805", "modality": "text", "methods": ["transformer", "masked language modeling", "pretraining"], "key_finding": "Masked bidirectional pretraining of a Transformer yields a general-purpose language encoder.", "abstract": "Introduces BERT, which pretrains deep bidirectional Transformer representations using a masked-language-modeling objective, then fine-tunes to state-of-the-art results across many language-understanding tasks.", "builds_on": ["vaswani-2017-transformer"], "see_also": [], "projects": ["Language line"], "status": "unverified", "tags_provenance": [{"field": "method", "value": "masked language modeling", "source": "abstract", "quote": "BERT is designed to pretrain deep bidirectional representations by jointly conditioning on both left and right context.", "by": "llm", "confidence": 0.9}], "added": "2026-06-25", "updated": "2026-06-25", "notes": "Drafted by LLM — verify the methods tags and the builds_on link before reviewing.", "datasets": ["bookcorpus", "wikipedia"], "tasks": ["language-modeling", "language-understanding"], "tools": ["tensorflow"]}, {"id": "brown-2020-gpt3", "title": "Language Models are Few-Shot Learners", "authors": [{"name": "Tom B. Brown"}, {"name": "Benjamin Mann"}, {"name": "Nick Ryder"}, {"name": "Jared Kaplan"}, {"name": "Ilya Sutskever"}, {"name": "Dario Amodei"}], "year": 2020, "venue": "NeurIPS", "url": "https://arxiv.org/abs/2005.14165", "modality": "text", "methods": ["transformer", "in-context learning"], "key_finding": "Scaling a Transformer LM to 175B parameters enables few-shot learning with no gradient updates.", "abstract": "Shows that scaling an autoregressive Transformer language model (GPT-3, 175B parameters) lets it perform many tasks from a few in-context examples without any gradient-based fine-tuning.", "builds_on": ["vaswani-2017-transformer", "devlin-2018-bert"], "see_also": [], "projects": ["Language line"], "status": "unverified", "tags_provenance": [{"field": "method", "value": "in-context learning", "source": "abstract", "quote": "GPT-3 is applied without any gradient updates or fine-tuning, with tasks specified purely via text interaction with the model.", "by": "llm", "confidence": 0.88}], "added": "2026-06-25", "updated": "2026-06-25", "notes": "Drafted by LLM — author list truncated to a representative subset; confirm modality.", "datasets": ["common-crawl", "wikipedia"], "tasks": ["language-modeling"], "tools": []}, {"id": "dosovitskiy-2020-vit", "title": "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale", "authors": [{"name": "Alexey Dosovitskiy"}, {"name": "Lucas Beyer"}, {"name": "Alexander Kolesnikov"}, {"name": "Dirk Weissenborn"}, {"name": "Xiaohua Zhai"}, {"name": "Neil Houlsby"}], "year": 2020, "venue": "ICLR", "url": "https://arxiv.org/abs/2010.11929", "modality": "vision", "methods": ["transformer", "self-attention"], "key_finding": "A pure Transformer over image patches matches CNNs at scale, bridging vision and language.", "abstract": "Applies a standard Transformer directly to sequences of image patches (Vision Transformer), showing that with large-scale pretraining it matches or exceeds convolutional networks on image classification.", "builds_on": ["vaswani-2017-transformer", "krizhevsky-2012-imagenet"], "see_also": [], "projects": ["Vision line", "Survey/Bridges"], "status": "verified", "tags_provenance": [{"field": "method", "value": "transformer", "source": "abstract", "quote": "A pure transformer applied directly to sequences of image patches can perform very well on image classification tasks.", "by": "human"}], "added": "2026-06-25", "updated": "2026-06-25", "datasets": ["imagenet", "jft300m"], "tasks": ["image-classification"], "tools": ["jax"]}]};
+const CFG_DEMO = {"app_name": "Paper Map", "title": "Foundations of Modern Deep Learning (demo)", "focal_authors": ["Geoffrey Hinton", "Ilya Sutskever"], "methods_vocab": ["CNN", "RNN", "LSTM", "attention", "self-attention", "transformer", "word embeddings", "dropout", "backpropagation", "pretraining", "masked language modeling", "in-context learning", "deep belief network", "encoder-decoder"], "modality_vocab": ["vision", "text", "general"], "default_lens": "methods", "palette": {"vision": "#4e79a7", "text": "#59a14f", "general": "#b07aa1"}, "facets": [{"key": "methods", "label": "Methods", "singular": "method", "builtin": true, "link": false}, {"key": "datasets", "label": "Datasets", "singular": "dataset", "entity": true, "link": true}, {"key": "tasks", "label": "Tasks", "singular": "task", "entity": true, "link": true}, {"key": "tools", "label": "Tools", "singular": "tool", "entity": true, "link": true}], "task_vocab": ["image-classification", "representation-learning", "word-representation", "machine-translation", "language-modeling", "language-understanding"]};
+
+/* ============================ Utilities ============================ */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uniq=a=>[...new Set(a)];
+function darken(hex,f=.78){const m=hex.replace('#','');const n=parseInt(m,16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.round(r*f);g=Math.round(g*f);b=Math.round(b*f);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+const SCALE=[["#4e79a7","#365677"],["#59a14f","#3f7437"],["#b07aa1","#835777"],["#e15759","#b23e40"],["#76b7b2","#4f8a85"],["#edc948","#b9972e"],["#ff9da7","#d46e78"],["#9c755f","#6f5343"]];
+const OTHER=["#bab0ac","#8a817c"];
+const SHAPES=["circle","square","triangle","diamond","pentagon","hexagon","wye","cross"];
+const ICON={
+ library:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h6v14H4zM14 5h6v14h-6z"/></svg>',
+ search:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>',
+ chev:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
+ check:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 5 5L20 6"/></svg>',
+ methods:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h3l3-8 4 16 3-8h7"/></svg>',
+ timeline:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M8 6h8a4 4 0 0 1 4 4v0a4 4 0 0 1-4 4H8"/></svg>',
+ people:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-5-5.9"/></svg>',
+ gear:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.4 2h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L4 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z"/></svg>',
+ help:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01"/></svg>',
+ folder:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h6l2 2h10v10H3z"/></svg>',
+ lock:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+ sparkle:'<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z"/></svg>',
+ ext:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 17 17 7M9 7h8v8"/></svg>',
+ db:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+ task:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>',
+ tag:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7v5l9 9 7-7-9-9H3z"/><circle cx="7.5" cy="7.5" r="1"/></svg>',
+ close:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+ arrowL:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M15 6l-6 6 6 6"/></svg>',
+ arrowR:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 6l6 6-6 6"/></svg>',
+ listc:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+ listd:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16M4 4.5v0M4 19.5v0"/></svg>',
+};
+
+/* ============================ YAML front-matter parser (targeted) ============================ */
+function parseScalar(v){
+  v=v.trim();
+  if(v==="")return "";
+  if((v[0]==='"'&&v.slice(-1)==='"')||(v[0]==="'"&&v.slice(-1)==="'")) return v.slice(1,-1).replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+  if(v==="true")return true; if(v==="false")return false;
+  if(/^-?\d+$/.test(v))return parseInt(v,10);
+  if(/^-?\d*\.\d+$/.test(v))return parseFloat(v);
+  return v;
+}
+function parseFlowList(v){
+  v=v.trim();
+  if(v==="[]"||v==="")return [];
+  if(v[0]==="["&&v.slice(-1)==="]")v=v.slice(1,-1);
+  const out=[];let cur="",q=null;
+  for(const ch of v){
+    if(q){if(ch===q)q=null;else cur+=ch;}
+    else if(ch==='"'||ch==="'")q=ch;
+    else if(ch===","){out.push(cur);cur="";}
+    else cur+=ch;
+  }
+  if(cur.trim()!=="")out.push(cur);
+  return out.map(parseScalar).filter(x=>x!=="");
+}
+function indent(l){return l.length-l.replace(/^ +/,"").length;}
+function parseFrontMatter(text){
+  // split front-matter and body
+  let fm="",body="";
+  const t=text.replace(/\r\n/g,"\n");
+  const m=t.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if(m){fm=m[1];body=m[2]||"";}else{body=t;}
+  const obj={};
+  const lines=fm.split("\n");
+  let i=0;
+  while(i<lines.length){
+    let line=lines[i];
+    if(!line.trim()||/^\s*#/.test(line)){i++;continue;}
+    const mm=line.match(/^([A-Za-z0-9_]+):(.*)$/);
+    if(!mm){i++;continue;}
+    const key=mm[1];let rest=mm[2].trim();
+    if(rest!==""){
+      if(rest[0]==="[")obj[key]=parseFlowList(rest);
+      else obj[key]=parseScalar(rest);
+      i++;continue;
+    }
+    // block: look ahead for "- " items (deeper indent)
+    const base=indent(line);
+    const items=[];let j=i+1;
+    while(j<lines.length){
+      const ln=lines[j];
+      if(!ln.trim()){j++;continue;}
+      if(indent(ln)<=base)break;
+      const it=ln.trim();
+      if(it.startsWith("- ")){
+        const first=it.slice(2);
+        const km=first.match(/^([A-Za-z0-9_]+):(.*)$/);
+        if(km){ // mapping item
+          const o={};o[km[1]]=parseScalar(km[2]);
+          // subsequent indented "key: val" lines belong to this item
+          let k=j+1;const itemIndent=indent(ln);
+          while(k<lines.length){
+            const sub=lines[k];
+            if(!sub.trim()){k++;continue;}
+            if(indent(sub)<=itemIndent)break;
+            const sm=sub.trim().match(/^([A-Za-z0-9_]+):(.*)$/);
+            if(sm)o[sm[1]]=parseScalar(sm[2]);
+            k++;
+          }
+          items.push(o);j=k;continue;
+        } else { items.push(parseScalar(first)); j++; continue; }
+      }
+      j++;
+    }
+    obj[key]=items;i=j;
+  }
+  // body sections
+  const sec={};let curh=null;const buf=[];
+  for(const ln of body.split("\n")){
+    const h=ln.match(/^##\s+(.+)$/);
+    if(h){if(curh)sec[curh]=buf.join("\n").trim();curh=h[1].trim().toLowerCase();buf.length=0;}
+    else if(curh)buf.push(ln);
+  }
+  if(curh)sec[curh]=buf.join("\n").trim();
+  return {fm:obj,sec};
+}
+const KNOWN_FM=new Set(["id","title","authors","year","venue","doi","url","pdf","modality","methods","key_finding","abstract","related","builds_on","see_also","projects","status","tags_provenance","notes","added","updated","schema_version"]);
+const STMAP={draft:"unverified",reviewed:"verified",needs_fixing:"flagged"}; // legacy status migration
+function normalizePaper(fm,sec){
+  const authors=(fm.authors||[]).map(a=> typeof a==="string"?{name:a}:a);
+  const facets={};
+  for(const k in fm){if(!KNOWN_FM.has(k)&&Array.isArray(fm[k]))facets[k]=fm[k].map(String);}
+  return {
+    id:fm.id, title:fm.title||"(untitled)", authors, facets,
+    year:fm.year, venue:fm.venue||"", doi:fm.doi||"", url:fm.url||"", pdf:fm.pdf||"",
+    modality:fm.modality||"", methods:fm.methods||[],
+    key_finding:fm.key_finding||"", abstract:(sec&&sec.abstract)||fm.abstract||"",
+    builds_on:fm.builds_on||fm.related||[], see_also:fm.see_also||[],
+    projects:fm.projects||[], status:STMAP[fm.status]||fm.status||"unverified",
+    tags_provenance:Array.isArray(fm.tags_provenance)?fm.tags_provenance:[],
+    notes:(sec&&sec.notes)||fm.notes||"",
+    added:fm.added||"", updated:fm.updated||"",
+  };
+}
+function fromRecord(r){ // index.json / inlined demo record -> in-memory paper
+  const fm={...r}; const sec={abstract:r.abstract,notes:r.notes};
+  return normalizePaper(fm,sec);
+}
+
+/* ===== serialize back to markdown ===== */
+function q(s){return '"'+String(s).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"';}
+function flow(a,quote){return "["+(a||[]).map(x=>quote?q(x):x).join(", ")+"]";}
+function serializePaper(p){
+  const L=["---"];
+  L.push("id: "+p.id);
+  L.push("title: "+q(p.title));
+  L.push("authors:");
+  for(const a of p.authors){L.push("  - name: "+q(a.name));if(a.external!=null)L.push("    external: "+a.external);}
+  if(p.year!=null)L.push("year: "+p.year);
+  if(p.venue)L.push("venue: "+q(p.venue));
+  if(p.doi)L.push("doi: "+q(p.doi));
+  if(p.url)L.push("url: "+q(p.url));
+  if(p.pdf)L.push("pdf: "+q(p.pdf));
+  if(p.modality)L.push("modality: "+q(p.modality));
+  L.push("methods: "+flow(p.methods,true));
+  if(p.key_finding)L.push("key_finding: "+q(p.key_finding));
+  L.push("builds_on: "+flow(p.builds_on,false));
+  L.push("see_also: "+flow(p.see_also,false));
+  L.push("projects: "+flow(p.projects,true));
+  for(const k in (p.facets||{}))L.push(k+": "+flow(p.facets[k],false));
+  L.push("status: "+p.status);
+  if(p.tags_provenance&&p.tags_provenance.length){
+    L.push("tags_provenance:");
+    for(const t of p.tags_provenance){
+      L.push("  - field: "+(t.field||"method"));
+      L.push("    value: "+q(t.value||""));
+      if(t.source)L.push("    source: "+t.source);
+      if(t.quote)L.push("    quote: "+q(t.quote));
+      if(t.by)L.push("    by: "+t.by);
+      if(t.confidence!=null)L.push("    confidence: "+t.confidence);
+    }
+  }
+  if(p.added)L.push("added: "+p.added);
+  L.push("updated: "+(new Date().toISOString().slice(0,10)));
+  L.push('schema_version: "1.0"');
+  L.push("---","");
+  if(p.abstract)L.push("## Abstract\n"+p.abstract,"");
+  if(p.notes)L.push("## Notes\n"+p.notes,"");
+  return L.join("\n").trim()+"\n";
+}
+function buildIndex(){
+  return {schema_version:"1.0",generated:new Date().toISOString(),title:S.config.title||"",
+    papers:S.corpus.map(p=>({id:p.id,title:p.title,authors:p.authors,year:p.year,venue:p.venue,
+      doi:p.doi||undefined,url:p.url||undefined,pdf:p.pdf||undefined,modality:p.modality,methods:p.methods,
+      key_finding:p.key_finding,abstract:p.abstract,builds_on:p.builds_on,see_also:p.see_also,
+      projects:p.projects,status:p.status,tags_provenance:p.tags_provenance,notes:p.notes||undefined,
+      added:p.added||undefined,updated:p.updated||undefined,...(p.facets||{})}))};
+}
+
+/* ============================ State ============================ */
+const ENT_DEMO = {"schema_version": "1.0", "generated": "2026-06-25T12:00:00Z", "entities": [{"id": "mnist", "type": "dataset", "name": "MNIST", "description": "Handwritten-digit images; the canonical small vision benchmark.", "modality": "vision", "year": 1998, "size": "70k images", "access": "open", "url": "http://yann.lecun.com/exdb/mnist/"}, {"id": "imagenet", "type": "dataset", "name": "ImageNet (ILSVRC)", "description": "Large-scale labelled image database that catalysed deep learning for vision.", "modality": "vision", "year": 2009, "size": "1.2M images / 1000 classes", "access": "open", "url": "https://image-net.org"}, {"id": "google-news", "type": "dataset", "name": "Google News corpus", "description": "Large internal news-text corpus used to train word2vec embeddings.", "modality": "text", "year": 2013, "size": "~100B tokens", "access": "proprietary"}, {"id": "wmt14-enfr", "type": "dataset", "name": "WMT'14 English–French", "description": "Standard machine-translation benchmark, English to French.", "modality": "text", "year": 2014, "size": "36M sentence pairs", "access": "open", "url": "https://www.statmt.org/wmt14/"}, {"id": "wmt14-ende", "type": "dataset", "name": "WMT'14 English–German", "description": "Standard machine-translation benchmark, English to German.", "modality": "text", "year": 2014, "size": "4.5M sentence pairs", "access": "open", "url": "https://www.statmt.org/wmt14/"}, {"id": "bookcorpus", "type": "dataset", "name": "BookCorpus", "description": "Free novels used for unsupervised language-model pretraining.", "modality": "text", "year": 2015, "size": "~800M words", "access": "restricted"}, {"id": "wikipedia", "type": "dataset", "name": "English Wikipedia", "description": "Encyclopaedic text widely used for pretraining.", "modality": "text", "year": 2018, "size": "~2.5B words", "access": "open", "url": "https://dumps.wikimedia.org"}, {"id": "common-crawl", "type": "dataset", "name": "Common Crawl (filtered)", "description": "Web-scale text corpus, filtered, used to train large language models.", "modality": "text", "year": 2020, "size": "~400B tokens", "access": "open", "url": "https://commoncrawl.org"}, {"id": "jft300m", "type": "dataset", "name": "JFT-300M", "description": "Very large internal Google image dataset used for large-scale pretraining.", "modality": "vision", "year": 2017, "size": "~300M images", "access": "proprietary"}, {"id": "image-classification", "type": "task", "name": "Image Classification", "description": "Assign a category label to an image."}, {"id": "representation-learning", "type": "task", "name": "Representation Learning", "description": "Learn reusable feature representations, often without labels."}, {"id": "word-representation", "type": "task", "name": "Word Representation", "description": "Learn dense vector representations of words."}, {"id": "machine-translation", "type": "task", "name": "Machine Translation", "description": "Translate text from one language into another."}, {"id": "language-modeling", "type": "task", "name": "Language Modeling", "description": "Predict the next token in a sequence of text."}, {"id": "language-understanding", "type": "task", "name": "Language Understanding", "description": "Downstream natural-language understanding tasks (e.g. GLUE)."}, {"id": "cuda-convnet", "type": "tool", "name": "cuda-convnet", "description": "Krizhevsky's high-performance CUDA convolutional-network code.", "language": "CUDA/C++", "year": 2012, "url": "https://code.google.com/archive/p/cuda-convnet/"}, {"id": "distbelief", "type": "tool", "name": "DistBelief", "description": "Google's first-generation large-scale distributed deep-learning framework.", "language": "C++", "year": 2012, "access": "proprietary"}, {"id": "theano", "type": "tool", "name": "Theano", "description": "Early Python framework for symbolic math and GPU deep learning.", "language": "Python", "year": 2010, "url": "https://github.com/Theano/Theano"}, {"id": "tensorflow", "type": "tool", "name": "TensorFlow", "description": "Open-source machine-learning framework from Google.", "language": "Python/C++", "year": 2015, "url": "https://www.tensorflow.org"}, {"id": "jax", "type": "tool", "name": "JAX", "description": "NumPy-compatible autodiff + XLA compilation for ML research.", "language": "Python", "year": 2018, "url": "https://github.com/google/jax"}]};
+const S={
+  mode:"welcome", corpus:[], entities:{}, config:{}, view:"library", lens:"methods", facetKey:"methods", linkShared:false, selectedId:null, selectedEntity:null, editing:false,
+  filters:{methods:new Set(),modalities:new Set(),statuses:new Set(),projects:new Set(),fx:{},search:""},
+  sort:"year-desc", density:"comfortable", showRings:true, showExternal:true,
+  zoom:{k:1,tx:0,ty:0}, dirHandle:null, fileHandles:{}, fileMeta:{}, saveState:"saved",
+  collapsedFacets:new Set(), legendCollapsed:true, menuOpen:null, modal:null, _importParsed:null, _importText:"", papersDirHandle:null,
+  derived:{}, _drag:null, _pan:null,
+};
+
+/* ============================ Derive ============================ */
+function deriveCorpus(){
+  const ids=new Set(S.corpus.map(p=>p.id));
+  // in-degree from builds_on
+  const indeg={}; S.corpus.forEach(p=>indeg[p.id]=0);
+  S.corpus.forEach(p=>p.builds_on.forEach(t=>{if(indeg[t]!=null)indeg[t]++;}));
+  // modality visuals
+  const mods=uniq(S.corpus.map(p=>p.modality).filter(Boolean));
+  const mv={};
+  mods.forEach((m,i)=>{
+    let col,strk;
+    if(S.config.palette&&S.config.palette[m]){col=S.config.palette[m];strk=darken(col);}
+    else if(i<SCALE.length){col=SCALE[i][0];strk=SCALE[i][1];}
+    else {col=OTHER[0];strk=OTHER[1];}
+    mv[m]={color:col,stroke:strk,shape:SHAPES[i%SHAPES.length]};
+  });
+  // validation
+  const val={};
+  S.corpus.forEach(p=>{
+    const errs=[],warns=[];
+    if(!p.id||!p.title||!p.authors.length||p.year==null)errs.push("missing required field");
+    p.builds_on.concat(p.see_also).forEach(t=>{if(!ids.has(t))warns.push("broken link: "+t);});
+    if(S.config.methods_vocab)p.methods.forEach(m=>{if(!S.config.methods_vocab.includes(m))warns.push("off-vocab: "+m);});
+    val[p.id]={errs,warns};
+  });
+  // duplicate ids
+  const seen={};S.corpus.forEach(p=>{if(seen[p.id])val[p.id].errs.push("duplicate id");seen[p.id]=1;});
+  // authors / coauthorship
+  const focal=new Set(S.config.focal_authors||[]);
+  const authors={}; const edges={};
+  S.corpus.forEach(p=>{
+    const names=p.authors.map(a=>a.name);
+    p.authors.forEach(a=>{
+      if(!authors[a.name]){
+        let internal=focal.has(a.name);
+        if(a.external===true)internal=false; if(a.external===false)internal=true;
+        authors[a.name]={name:a.name,papers:0,internal,focal:focal.has(a.name)};
+      }
+      authors[a.name].papers++;
+    });
+    for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){
+      const k=[names[i],names[j]].sort().join("");
+      edges[k]=(edges[k]||0)+1;
+    }
+  });
+  // entities: auto-stub referenced values, compute usage rollups
+  const usage={};
+  entityFacets().forEach(f=>{
+    S.corpus.forEach(p=>{
+      facetVals(p,f.key).forEach(v=>{
+        if(!S.entities[v])S.entities[v]={id:v,type:f.singular||f.key,name:v,meta:{},description:"",status:"stub"};
+        (usage[v]=usage[v]||[]).push(p.id);
+      });
+    });
+  });
+  S.derived={indeg,mv,val,authors,edges,mods,ids,entityUsage:usage};
+}
+/* ---- facet helpers ---- */
+function facetDefs(){return S.config.facets||[{key:"methods",label:"Methods",singular:"method",builtin:true}];}
+function entityFacets(){return facetDefs().filter(f=>f.entity);}
+function facetOf(key){return facetDefs().find(f=>f.key===key)||{key,label:key[0].toUpperCase()+key.slice(1),singular:key};}
+function facetVals(p,key){if(key==="methods")return p.methods||[];if(key==="modality")return p.modality?[p.modality]:[];if(key==="status")return [p.status];if(key==="projects")return p.projects||[];return (p.facets&&p.facets[key])||[];}
+function facetIcon(f){return f.key==="datasets"?ICON.db:f.key==="tasks"?ICON.task:ICON.tag;}
+function entityName(id){const e=S.entities[id];return e?e.name:id;}
+function entityUsage(id){return (S.derived.entityUsage&&S.derived.entityUsage[id])||[];}
+function resetFilters(){S.filters={methods:new Set(),modalities:new Set(),statuses:new Set(),projects:new Set(),fx:{},search:""};}
+function fromEntityRecord(r){const meta={};for(const k in r){if(!["id","type","name","description"].includes(k))meta[k]=r[k];}return {id:r.id,type:r.type||"entity",name:r.name||r.id,description:r.description||"",meta,status:"recorded"};}
+function fromEntityFm(fm,sec){const meta={};for(const k in fm){if(!["id","type","name","schema_version"].includes(k))meta[k]=fm[k];}return {id:fm.id,type:fm.type||"entity",name:fm.name||fm.id,description:(sec&&sec.description)||"",meta,status:"recorded"};}
+
+/* ============================ Mode badge ============================ */
+function modeChip(){
+  if(S.mode==="edit")return `<span class="modechip">${ICON.folder}<span>Editing · ${esc(S.dirHandle?S.dirHandle.name:"folder")}/</span></span>`;
+  if(S.mode==="browse")return `<span class="modechip">${ICON.lock}<span>Read-only</span></span>`;
+  if(S.mode==="memory")return `<span class="modechip">${ICON.tag}<span>Imported · unsaved</span></span>`;
+  return `<span class="modechip">${ICON.sparkle}<span>Demo data</span></span>`;
+}
+function saveRead(){
+  if(S.mode==="browse")return `<span>${ICON.lock} Read-only</span>`;
+  if(S.mode==="demo")return `<span>Demo · not saved</span>`;
+  if(S.mode==="memory")return `<span>Imported · not saved</span>`;
+  const m={saving:'<span class="saving">Saving…</span>',saved:'<span class="ok">✓ Saved</span>',error:'<span class="err">⚠ Couldn\'t save</span>',conflict:'<span class="err">⚠ Conflict</span>'}[S.saveState]||"";
+  return m;
+}
+
+/* ============================ Filtering ============================ */
+function filteredCorpus(){
+  const f=S.filters;
+  return S.corpus.filter(p=>{
+    if(f.methods.size&&!p.methods.some(m=>f.methods.has(m)))return false;
+    if(f.modalities.size&&!f.modalities.has(p.modality))return false;
+    if(f.statuses.size&&!f.statuses.has(p.status))return false;
+    if(f.projects.size&&!p.projects.some(x=>f.projects.has(x)))return false;
+    for(const ef of entityFacets()){const set=f.fx[ef.key];if(set&&set.size&&!facetVals(p,ef.key).some(v=>set.has(v)))return false;}
+    if(f.search){
+      const q=f.search.toLowerCase();
+      const hay=(p.title+" "+p.authors.map(a=>a.name).join(" ")+" "+p.key_finding+" "+p.abstract+" "+p.methods.join(" ")+" "+p.venue+" "+Object.values(p.facets||{}).flat().map(entityName).join(" ")).toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+}
+function sortPapers(arr){
+  const a=[...arr];
+  if(S.sort==="year-desc")a.sort((x,y)=>(y.year||0)-(x.year||0)||x.title.localeCompare(y.title));
+  else if(S.sort==="year-asc")a.sort((x,y)=>(x.year||0)-(y.year||0)||x.title.localeCompare(y.title));
+  else if(S.sort==="title")a.sort((x,y)=>x.title.localeCompare(y.title));
+  else if(S.sort==="status"){const o={flagged:0,unverified:1,verified:2};a.sort((x,y)=>(o[x.status]-o[y.status])||(y.year||0)-(x.year||0));}
+  return a;
+}
+function activeFilterCount(){const f=S.filters;let n=f.methods.size+f.modalities.size+f.statuses.size+f.projects.size+(f.search?1:0);for(const k in f.fx)n+=f.fx[k].size;return n;}
+
+/* ============================ Render: shell ============================ */
+function render(){
+  const root=$("#root");
+  if(S.mode==="welcome"){root.innerHTML=welcomeHTML()+(S.modal?modalHTML():"");root.onclick=onClick;return;}
+  const loaded=S.corpus.length>0;
+  root.innerHTML=`
+  <header class="shell">
+    <div class="wordmark" data-act="home">
+      <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="#fff" stroke="#cf7152" stroke-width="1.6"/><path d="M10 1.5 A8.5 8.5 0 0 0 10 18.5 Z" fill="#cf7152"/></svg>
+      <span class="name">Paper Map</span>
+    </div>
+    <span class="dot">·</span>
+    <div class="menu" id="mapmenu"><button class="corpusbtn" data-act="mapmenu"><span class="ct">${esc(S.config.title||(S.dirHandle&&S.dirHandle.name)||"Untitled corpus")}</span>${ICON.chev}</button></div>
+    <nav class="tabs">
+      ${tab("library","Library")}
+      ${tab("review","Review",S.corpus.filter(p=>p.status==="unverified").length)}
+      ${tab("map","Map")}
+      ${entityFacets().length?tab("entities","Entities"):""}
+    </nav>
+    <div class="spacer"></div>
+    <div class="search"><span class="ico">${ICON.search}</span><input id="search" placeholder="Search papers, authors…" value="${esc(S.filters.search)}"><kbd>/</kbd></div>
+    <div class="statusread">${saveRead()}<span>·</span><span class="tnum">${S.corpus.length} papers</span><span>·</span><span>◴ Offline</span></div>
+    ${modeChip()}
+    <button class="iconbtn" data-act="settings" title="Settings">${ICON.gear}</button>
+    <button class="iconbtn" data-act="help" title="Help">${ICON.help}</button>
+  </header>
+  ${subheader()}
+  <div class="main" id="main">${viewHTML()}${S.selectedEntity?entityPanelHTML():""}</div>
+  ${S.modal?modalHTML():""}`;
+  wireShell();
+  if(S.view==="map")requestAnimationFrame(()=>renderMap());
+}
+function tab(id,label,badge){
+  const b=(badge!=null&&badge>0)?`<span class="badge">${badge}</span>`:"";
+  return `<button class="${S.view===id?"active":""}" data-tab="${id}">${label}${b}</button>`;
+}
+function subheader(){
+  if(S.view==="library"){
+    const n=filteredCorpus().length;const af=activeFilterCount();
+    return `<div class="subheader"><span class="tnum">${n} paper${n!==1?"s":""}</span>
+      ${af?`<span style="color:var(--ink-3)">·</span><span style="color:var(--accent-text);cursor:pointer" data-act="clearfilters">${af} filter${af!==1?"s":""} active — clear</span>`:""}
+      <div class="right">
+        <div class="menu" id="sortmenu"><button class="btn sm" data-act="togglesort">Sort: ${sortLabel()} ${ICON.chev}</button></div>
+        <div class="densbtns"><button data-dens="comfortable" class="${S.density==="comfortable"?"on":""}" title="Comfortable">${ICON.listc}</button><button data-dens="compact" class="${S.density==="compact"?"on":""}" title="Compact">${ICON.listd}</button></div>
+      </div></div>`;
+  }
+  if(S.view==="map"){
+    const sub=S.lens==="methods"?`grouped by ${esc(facetOf(S.facetKey).singular||S.facetKey)}, coloured by modality`:{timeline:"by year, lineage arrows",people:"co-authorship network"}[S.lens];
+    const pickKeys=["methods",...entityFacets().map(f=>f.key)];
+    const facetPick=(S.lens==="methods"&&pickKeys.length>1)?`<span style="color:var(--ink-3)">Group by:</span>${pickKeys.map(k=>`<button class="fpick ${S.facetKey===k?"on":""}" data-facetpick="${k}">${esc(facetOf(k).label)}</button>`).join("")}`:"";
+    const linkTog=(S.lens==="methods"&&facetOf(S.facetKey).link)?`<span class="toggle ${S.linkShared?"on":""}" data-act="linkshared"><span class="sw"></span>Link shared</span>`:"";
+    return `<div class="subheader"><span class="tnum">${S.corpus.length} papers</span><span style="color:var(--ink-3)">·</span><span>${sub}</span>
+      <div class="right">
+        ${facetPick}${linkTog}
+        <span class="toggle ${S.showRings?"on":""}" data-act="rings"><span class="sw"></span>Status rings</span>
+        ${S.lens==="people"?`<span class="toggle ${S.showExternal?"on":""}" data-act="external"><span class="sw"></span>External authors</span>`:""}
+      </div></div>`;
+  }
+  if(S.view==="entities"){
+    return `<div class="subheader"><span class="tnum">${Object.keys(S.entities).length}</span><span>entities across ${entityFacets().length} type${entityFacets().length!==1?"s":""}</span>
+      <div class="right"><span style="color:var(--ink-3)">Click an entity to see what uses it</span></div></div>`;
+  }
+  if(S.view==="review"){
+    return `<div class="subheader"><span>Review queue</span><span style="color:var(--ink-3)">·</span><span class="tnum">${S.corpus.length} papers</span>
+      <div class="right"><span style="color:var(--ink-3)">Drag cards between lanes to set status</span></div></div>`;
+  }
+  return "";
+}
+function sortLabel(){return {"year-desc":"Year ↓","year-asc":"Year ↑","title":"Title A–Z","status":"Status"}[S.sort];}
+function viewHTML(){
+  if(S.view==="library")return libraryHTML();
+  if(S.view==="review")return reviewHTML();
+  if(S.view==="map")return mapShellHTML();
+  if(S.view==="entities")return entitiesHTML();
+  return "";
+}
+function entitiesHTML(){
+  const byType={};Object.values(S.entities).forEach(e=>{(byType[e.type]=byType[e.type]||[]).push(e);});
+  const types=Object.keys(byType).sort();
+  if(!types.length)return `<div class="empty"><div style="color:var(--ink-2)">No entities yet.</div><div style="color:var(--ink-3);font-size:13px">Add datasets or tasks to a paper (e.g. <code>datasets: [hcp]</code>) and they appear here.</div></div>`;
+  return `<div class="entities">${types.map(ty=>{
+    const items=byType[ty].sort((a,b)=>entityUsage(b.id).length-entityUsage(a.id).length||a.name.localeCompare(b.name));
+    return `<div class="entgroup"><div class="entgrouph">${esc(ty)}s <span class="badge">${items.length}</span></div>
+      <div class="entgrid">${items.map(e=>{const u=entityUsage(e.id).length;const m=e.meta||{};return `<div class="entcard" data-act="openentity" data-ent="${esc(e.id)}">
+        <div class="entname">${esc(e.name)}${e.status==="stub"?` <span class="statusbadge unverified" style="height:18px;font-size:11px">stub</span>`:""}</div>
+        <div class="entmeta">${m.modality?esc(m.modality)+" · ":""}${m.size?esc(m.size)+" · ":""}<span class="tnum">${u} paper${u!==1?"s":""}</span></div>
+      </div>`;}).join("")}</div></div>`;
+  }).join("")}</div>`;
+}
+function entityPanelHTML(){
+  const e=S.entities[S.selectedEntity];if(!e)return "";
+  const used=entityUsage(e.id);const m=e.meta||{};
+  const editable=S.mode==="edit"||S.mode==="demo"||S.mode==="memory";
+  return `<div class="scrim" data-act="closeentity"></div><div class="panel" id="entpanel">
+    <div class="phead">
+      <span class="chip ent" style="cursor:default">${e.type==="dataset"?ICON.db:e.type==="task"?ICON.task:ICON.tag} ${esc(e.type)}</span>
+      <div class="spacer" style="flex:1"></div>
+      ${e.status==="stub"?`<span class="statusbadge unverified">stub</span>`:""}
+      <button class="iconbtn" data-act="closeentity">${ICON.close}</button>
+    </div>
+    <div class="pbody">
+      ${editable?`<input class="enttitle-edit" data-act="editentname" value="${esc(e.name)}" placeholder="Name…">`:`<div class="ptitle">${esc(e.name)}</div>`}
+      <div class="seclabel">DETAILS</div>
+      ${editable?`<div class="metarows">${Object.entries(m).map(([k,v])=>`<div class="metarow"><span class="mk">${esc(k)}</span><input class="metaedit" data-act="editentmeta" data-key="${esc(k)}" value="${esc(v)}"></div>`).join("")}</div>
+        <button class="miniadd" data-act="addentfield" style="margin-top:6px">+ field</button>`
+       :(Object.keys(m).length?`<div class="metarows">${Object.entries(m).map(([k,v])=>`<div class="metarow"><span class="mk">${esc(k)}</span><span class="mv">${k==="url"&&v?`<a href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a>`:esc(v)}</span></div>`).join("")}</div>`:`<div class="abstract" style="color:var(--ink-3)">No details yet.</div>`)}
+      <div class="seclabel">DESCRIPTION</div>
+      ${editable?`<textarea class="notesedit" data-act="editentdesc" placeholder="What is this ${esc(e.type)}? Add a short description…">${esc(e.description)}</textarea>`
+        :(e.description?`<div class="abstract">${esc(e.description)}</div>`:`<div class="abstract" style="color:var(--ink-3)">No description yet — referenced by ${used.length} paper${used.length!==1?"s":""}.</div>`)}
+      <div class="seclabel">USED BY ${used.length} PAPER${used.length!==1?"S":""}</div>
+      ${used.map(pid=>{const pp=S.corpus.find(x=>x.id===pid);return pp?`<div class="relitem" data-act="goto" data-id="${esc(pid)}">→ ${esc(pp.title)} <span style="color:var(--ink-3);font-size:12px">· ${pp.year}</span></div>`:"";}).join("")}
+      <div class="provfoot">${S.mode==="edit"?"entities/"+esc(e.id)+".md":"demo · "+esc(e.id)}${e.status==="stub"?" · stub (unsaved)":""}</div>
+    </div>
+  </div>`;
+}
+
+/* ============================ Library ============================ */
+function facetCounts(field){
+  const c={};
+  S.corpus.forEach(p=>{uniq(facetVals(p,field)).forEach(v=>{if(v)c[v]=(c[v]||0)+1;});});
+  return c;
+}
+function filterSet(key){return S.filters[key]||(S.filters.fx[key]||(S.filters.fx[key]=new Set()));}
+function facet(title,field,setKey){
+  const counts=facetCounts(field);
+  const keys=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b));
+  if(!keys.length)return "";
+  const collapsed=S.collapsedFacets.has(field);
+  const sel=filterSet(setKey);
+  const isEnt=entityFacets().some(f=>f.key===field);
+  return `<div class="facet ${collapsed?"collapsed":""}">
+    <div class="h" data-facet="${field}"><span>${esc(title)}</span><span class="chev">${ICON.chev}</span></div>
+    <div class="opts">${keys.map(k=>{
+      let sw="";
+      if(field==="modality"&&S.derived.mv[k])sw=`<span class="sw" style="background:${S.derived.mv[k].color};${S.derived.mv[k].shape==="circle"?"border-radius:50%":""}"></span>`;
+      const lbl=isEnt?entityName(k):(field==="status"?statusWord(k):k);
+      return `<div class="opt ${sel.has(k)?"on":""}" data-opt="${esc(setKey)}" data-val="${esc(k)}">
+        <span class="cbx">${sel.has(k)?ICON.check:""}</span>
+        <span class="lbl">${sw}${esc(lbl)}</span><span class="cnt tnum">${counts[k]}</span></div>`;
+    }).join("")}</div></div>`;
+}
+function libraryHTML(){
+  const rail=`<aside class="rail">
+    <div class="railhead"><span class="t">FILTERS</span>${activeFilterCount()?`<a data-act="clearfilters">Clear all</a>`:""}</div>
+    ${facet("METHOD","methods","methods")}
+    ${facet("MODALITY","modality","modalities")}
+    ${entityFacets().map(f=>facet(f.label.toUpperCase(),f.key,f.key)).join("")}
+    ${facet("STATUS","status","statuses")}
+    ${facet("PROJECT / COLLECTION","projects","projects")}
+  </aside>`;
+  const papers=sortPapers(filteredCorpus());
+  let list;
+  if(!papers.length){
+    list=`<div class="empty"><div style="font-size:15px;color:var(--ink-2)">No papers match these filters.</div><button class="btn sm" data-act="clearfilters">Clear all filters</button></div>`;
+  }else{
+    list=papers.map(p=>rowHTML(p)).join("");
+  }
+  return `<div class="library">${rail}<div class="listwrap" id="listwrap">${list}</div>${S.selectedId?panelHTML():""}</div>`;
+}
+function authorsShort(p){
+  const n=p.authors.map(a=>a.name);
+  if(n.length<=2)return n.join(", ");
+  return n[0]+" et al.";
+}
+function methodChip(m,p){
+  return `<span class="chip"><span class="diamond"></span>${esc(m)}</span>`;
+}
+function rowHTML(p){
+  const v=S.derived.val[p.id]||{errs:[],warns:[]};
+  const broken=v.warns.some(w=>w.startsWith("broken"));
+  return `<div class="row ${S.density} ${S.selectedId===p.id?"sel":""}" data-row="${esc(p.id)}">
+    <div class="r1"><span class="title">${esc(p.title)}</span>
+      ${v.errs.length?`<span class="warnbadge">⚠ ${esc(v.errs[0])}</span>`:`<span class="statusbadge ${p.status}">${statusLabel(p.status)}</span>`}</div>
+    <div class="meta">${esc(authorsShort(p))} · <span class="tnum">${p.year||"—"}</span> · ${esc(p.venue||"")}</div>
+    <div class="chips">${p.methods.map(m=>methodChip(m,p)).join("")}${entityFacets().map(f=>facetVals(p,f.key).map(v=>`<span class="chip ent" data-act="openentity" data-ent="${esc(v)}">${facetIcon(f)} ${esc(entityName(v))}</span>`).join("")).join("")}${p.projects.map(pr=>`<span class="chip proj">⧉ ${esc(pr)}</span>`).join("")}${broken?`<span class="warnbadge">⚠ broken link</span>`:""}</div>
+  </div>`;
+}
+function statusLabel(s){return s==="unverified"?"✎ Unverified":s==="verified"?"✓ Verified":"⚑ Flagged";}
+function statusWord(s){return ({unverified:"Unverified",verified:"Verified",flagged:"Flagged"})[s]||s;}
+
+/* ============================ Detail panel ============================ */
+function modalitySwatch(m,size=10){
+  const mv=S.derived.mv[m];if(!mv)return "";
+  return shapeSVG(mv.shape,size,mv.color,mv.stroke);
+}
+function shapeSVG(shape,s,fill,stroke){
+  const c=s/2,r=s/2-1;let el;
+  if(shape==="circle")el=`<circle cx="${c}" cy="${c}" r="${r}"/>`;
+  else if(shape==="square")el=`<rect x="1" y="1" width="${s-2}" height="${s-2}" rx="1"/>`;
+  else if(shape==="triangle")el=`<path d="M${c} 1 L${s-1} ${s-1} L1 ${s-1} Z"/>`;
+  else if(shape==="diamond")el=`<path d="M${c} 1 L${s-1} ${c} L${c} ${s-1} L1 ${c} Z"/>`;
+  else el=poly(shape,c,r);
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" style="overflow:visible"><g fill="${fill}" stroke="${stroke}" stroke-width="1">${el}</g></svg>`;
+}
+function poly(shape,cx,cy,r){
+  cy=cx; // square viewbox
+  const sides=shape==="pentagon"?5:shape==="hexagon"?6:shape==="wye"?3:4;
+  if(shape==="wye"){let p="";for(let i=0;i<3;i++){const a=-Math.PI/2+i*2*Math.PI/3;p+=`M${cx} ${cy} L${cx+r*Math.cos(a)} ${cy+r*Math.sin(a)} `;}return `<path d="${p}" stroke-width="2.4"/>`;}
+  if(shape==="cross"){return `<path d="M${cx-r} ${cy} H${cx+r} M${cx} ${cy-r} V${cy+r}" stroke-width="2.4"/>`;}
+  let pts=[];for(let i=0;i<sides;i++){const a=-Math.PI/2+i*2*Math.PI/sides;pts.push(`${cx+r*Math.cos(a)},${cy+r*Math.sin(a)}`);}
+  return `<polygon points="${pts.join(" ")}"/>`;
+}
+function provFor(p,field,value){return (p.tags_provenance||[]).find(t=>t.field===field&&t.value===value);}
+function panelHTML(){
+  const p=S.corpus.find(x=>x.id===S.selectedId);if(!p)return "";
+  const idx=sortPapers(filteredCorpus()).findIndex(x=>x.id===p.id);
+  const list=sortPapers(filteredCorpus());
+  const v=S.derived.val[p.id]||{warns:[]};
+  const editable=S.mode==="edit"||S.mode==="demo"||S.mode==="memory";
+  const pdfOk=p.pdf&&(p.pdf.startsWith("http")||S.mode==="edit");
+  return `<div class="scrim" data-act="closepanel"></div><div class="panel" id="panel">
+    <div class="phead">
+      <button class="navbtn" data-act="prev" ${idx<=0?"disabled":""}>${ICON.arrowL}</button>
+      <button class="navbtn" data-act="next" ${idx>=list.length-1?"disabled":""}>${ICON.arrowR}</button>
+      ${p.projects[0]?`<span class="chip proj">⧉ ${esc(p.projects[0])}</span>`:""}
+      <div class="spacer" style="flex:1"></div>
+      <span class="statuspill ${p.status}" data-act="cyclestatus" title="Click to change status">${statusLabel(p.status)} ${ICON.chev}</span>
+      <button class="iconbtn" data-act="closepanel">${ICON.close}</button>
+    </div>
+    <div class="pbody">
+      <div class="ptitle">${esc(p.title)}</div>
+      <div class="authorline">${p.authors.map(a=>{const A=S.derived.authors[a.name]||{};return `<span class="authorchip"><span class="ad ${A.internal?"int":"ext"}"></span>${esc(a.name)}</span>`;}).join("")}</div>
+      <div class="metaline tnum">${p.year||"—"} · ${esc(p.venue||"")}${p.doi?` · doi:${esc(p.doi)}`:""}</div>
+      <div class="pactions">
+        <button class="btn sm" data-act="pdf" ${pdfOk?"":"disabled"}>${ICON.ext} Open PDF</button>
+        ${p.doi?`<button class="btn sm" data-act="doi">${ICON.ext} DOI</button>`:""}
+        <button class="btn sm" data-act="showmap">${ICON.methods} Show in Map</button>
+      </div>
+      <div class="seclabel">METHODS &amp; MODALITY</div>
+      <div class="tagrow">
+        ${p.modality?`<span class="chip modality"><span class="swatch">${modalitySwatch(p.modality)}</span>${esc(p.modality)}</span>`:""}
+        ${p.methods.map(m=>{const pr=provFor(p,"method",m);return `<span class="chip" data-prov-field="method" data-prov-val="${esc(m)}"><span class="prov-dot ${pr?"has":"none"}"></span>${esc(m)}${editable?`<span class="x" data-act="rmmethod" data-val="${esc(m)}">×</span>`:""}</span>`;}).join("")}
+        ${editable?`<button class="miniadd" data-act="addmethod">+ add</button>`:""}
+      </div>
+      ${entityFacets().map(f=>{const vals=facetVals(p,f.key);return (vals.length||editable)?`<div class="seclabel">${esc(f.label.toUpperCase())}</div><div class="tagrow">${vals.map(v=>`<span class="chip ent" data-act="openentity" data-ent="${esc(v)}">${facetIcon(f)} ${esc(entityName(v))}${editable?`<span class="x" data-act="rmfacet" data-fk="${esc(f.key)}" data-val="${esc(v)}">×</span>`:""}</span>`).join("")}${editable?`<button class="miniadd" data-act="addfacet" data-fk="${esc(f.key)}">+ add</button>`:""}</div>`:"";}).join("")}
+      <div class="seclabel">KEY FINDING</div>
+      ${editable?`<input class="kfedit" data-act="editkf" value="${esc(p.key_finding)}" placeholder="One-sentence takeaway…">`:`<div class="kf">${esc(p.key_finding||"—")}</div>`}
+      ${p.abstract?`<div class="seclabel">ABSTRACT</div><div class="abstract">${esc(p.abstract)}</div>`:""}
+      ${(p.builds_on.length||p.see_also.length)?`<div class="seclabel">LINEAGE</div>`:""}
+      ${p.builds_on.map(t=>relItem(t,"builds on")).join("")}
+      ${p.see_also.map(t=>relItem(t,"see also")).join("")}
+      ${p.projects.length?`<div class="seclabel">PROJECTS</div><div class="tagrow">${p.projects.map(pr=>`<span class="chip proj">⧉ ${esc(pr)}</span>`).join("")}</div>`:""}
+      <div class="seclabel">NOTES</div>
+      ${editable?`<textarea class="notesedit" data-act="editnotes" placeholder="Your reading notes…">${esc(p.notes)}</textarea>`:`<div class="abstract">${esc(p.notes||"—")}</div>`}
+      <div class="provfoot">${S.mode==="edit"?esc(p.id)+".md":"demo · "+esc(p.id)} · ${S.saveState==="saved"?"saved":"not saved"}</div>
+    </div>
+    ${p.status!=="verified"&&editable?`<div class="pfoot"><button class="btn primary" style="width:100%" data-act="markreviewed">${ICON.check} Mark verified</button></div>`:""}
+  </div>`;
+}
+function relItem(id,kind){
+  const t=S.corpus.find(x=>x.id===id);
+  if(!t)return `<div class="relitem broken">⚠ ${esc(id)} (missing) · ${kind}</div>`;
+  return `<div class="relitem" data-act="goto" data-id="${esc(id)}">→ ${esc(t.title)} <span style="color:var(--ink-3);font-size:12px">· ${kind}</span></div>`;
+}
+
+/* ============================ Review ============================ */
+function reviewHTML(){
+  const lanes=[["unverified","Unverified"],["flagged","Flagged"],["verified","Verified"]];
+  return `<div class="review">${lanes.map(([st,label])=>{
+    const items=sortPapers(S.corpus.filter(p=>p.status===st));
+    return `<div class="lane ${st}"><div class="lh"><span class="ld"></span>${label}<span class="badge">${items.length}</span></div>
+      <div class="cards" data-lane="${st}">${items.map(p=>kcard(p,st)).join("")||`<div style="padding:14px;color:var(--ink-3);font-size:13px">Nothing here.</div>`}</div></div>`;
+  }).join("")}</div>`;
+}
+function kcard(p,st){
+  const prov=(p.tags_provenance||[])[0];
+  return `<div class="kcard ${st}" data-card="${esc(p.id)}" draggable="true">
+    <div class="kt">${esc(p.title)}</div>
+    <div class="km tnum">${esc(authorsShort(p))} · ${p.year||"—"}</div>
+    <div class="kchips">${p.methods.slice(0,3).map(m=>`<span class="chip"><span class="diamond"></span>${esc(m)}</span>`).join("")}</div>
+    ${prov&&prov.quote?`<div class="kprov">“${esc(prov.quote.slice(0,80))}${prov.quote.length>80?"…":""}”</div>`:""}
+  </div>`;
+}
+
+/* ============================ Map ============================ */
+function mapShellHTML(){
+  return `<div class="map" id="mapwrap">
+    <div class="lensswitch">
+      ${["methods","timeline","people"].map(l=>{const lab=l==="methods"?facetOf(S.facetKey).label:l[0].toUpperCase()+l.slice(1);return `<button class="${S.lens===l?"on":""}" data-lens="${l}">${ICON[l]} ${esc(lab)}</button>`;}).join("")}
+    </div>
+    <svg id="mapsvg"></svg>
+    <div class="legend ${S.legendCollapsed?"collapsed":""}" id="legend">
+      <div class="lgh" data-act="togglelegend"><span>${S.lens==="people"?"AUTHORS":"MODALITY"}</span><span>${ICON.chev}</span></div>
+      <div class="lgbody">${legendBody()}</div>
+    </div>
+    <div class="zoomctl">
+      <button data-act="zoomin">+</button><button data-act="zoomout">−</button><button data-act="zoomfit" title="Fit">⤢</button>
+    </div>
+  </div>`;
+}
+function legendBody(){
+  if(S.lens==="people"){
+    return `<div class="li"><span style="width:12px;height:12px;border-radius:50%;background:var(--accent)"></span>Internal author</div>
+      <div class="li"><span style="width:12px;height:12px;border-radius:50%;background:#bab0ac"></span>External author</div>
+      <div class="li"><span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--accent);background:var(--accent-soft)"></span>Focal (haloed)</div>`;
+  }
+  return S.derived.mods.map(m=>`<div class="li">${modalitySwatch(m,12)}${esc(m)}</div>`).join("")+
+    `<div class="li" style="margin-top:4px;color:var(--ink-3);border-top:1px solid var(--border-light);padding-top:6px">size = lineage in-degree</div>`;
+}
+function mapTransform(){return `translate(${S.zoom.tx},${S.zoom.ty}) scale(${S.zoom.k})`;}
+
+function nodeMarkup(p,x,y,r){
+  const mv=S.derived.mv[p.modality]||{color:OTHER[0],stroke:OTHER[1],shape:"circle"};
+  let shape;
+  const s=p.modality?mv.shape:"circle";
+  if(s==="circle")shape=`<circle cx="${x}" cy="${y}" r="${r}" fill="${mv.color}" stroke="${mv.stroke}" stroke-width="1.5"/>`;
+  else if(s==="square")shape=`<rect x="${x-r}" y="${y-r}" width="${2*r}" height="${2*r}" rx="2" fill="${mv.color}" stroke="${mv.stroke}" stroke-width="1.5"/>`;
+  else if(s==="triangle")shape=`<path d="M${x} ${y-r} L${x+r} ${y+r} L${x-r} ${y+r} Z" fill="${mv.color}" stroke="${mv.stroke}" stroke-width="1.5" stroke-linejoin="round"/>`;
+  else if(s==="diamond")shape=`<path d="M${x} ${y-r} L${x+r} ${y} L${x} ${y+r} L${x-r} ${y} Z" fill="${mv.color}" stroke="${mv.stroke}" stroke-width="1.5" stroke-linejoin="round"/>`;
+  else {let pts=[];const sides=s==="pentagon"?5:6;for(let i=0;i<sides;i++){const a=-Math.PI/2+i*2*Math.PI/sides;pts.push(`${x+r*Math.cos(a)},${y+r*Math.sin(a)}`);}shape=`<polygon points="${pts.join(" ")}" fill="${mv.color}" stroke="${mv.stroke}" stroke-width="1.5" stroke-linejoin="round"/>`;}
+  let ring="";
+  if(S.showRings&&p.status!=="verified"){
+    const col=p.status==="unverified"?"var(--draft-line)":"var(--warn-line)";
+    ring=`<circle cx="${x}" cy="${y}" r="${r+4}" fill="none" stroke="${col}" stroke-width="1.6" stroke-dasharray="3 2.5"/>`;
+  }
+  const badge=p.methods.length>1?`<g><circle cx="${x+r-1}" cy="${y-r+1}" r="7" fill="#2a2722"/><text x="${x+r-1}" y="${y-r+1}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="9" font-weight="600">${p.methods.length}</text></g>`:"";
+  return `<g class="node" data-node="${esc(p.id)}" style="cursor:pointer">${ring}${shape}${badge}</g>`;
+}
+
+function renderMap(){
+  const wrap=$("#mapwrap");if(!wrap)return;
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  const svg=$("#mapsvg");svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  if(S.lens==="methods")svg.innerHTML=renderFacet(S.facetKey,W,H);
+  else if(S.lens==="timeline")svg.innerHTML=renderTimeline(W,H);
+  else svg.innerHTML=renderPeople(W,H);
+  wireMap();
+}
+function rad(p){const d=S.derived.indeg[p.id]||0;return 9+Math.min(d,5)*2.6;}
+
+function renderFacet(key,W,H){
+  const valOf=p=>facetVals(p,key)[0];
+  const vocab=key==="methods"?(S.config.methods_vocab||[]):[];
+  const lanesOrder=vocab.filter(m=>S.corpus.some(p=>valOf(p)===m));
+  const present=uniq(S.corpus.map(valOf).filter(Boolean));
+  present.forEach(m=>{if(!lanesOrder.includes(m))lanesOrder.push(m);});
+  const noneItems=S.corpus.filter(p=>!valOf(p));
+  const allLanes=lanesOrder.concat(noneItems.length?["—"]:[]);
+  const labelW=160,padX=24,gap=96,top=66;
+  let y=top;const rows=[];const pos={};
+  allLanes.forEach(val=>{
+    const items=sortPapers(val==="—"?noneItems:S.corpus.filter(p=>valOf(p)===val));
+    const perRow=Math.max(1,Math.floor((W-labelW-padX*2)/gap));
+    const nrows=Math.ceil(items.length/perRow);
+    const laneH=Math.max(64,nrows*52+24);
+    rows.push({val,items,y,laneH,perRow});
+    y+=laneH;
+  });
+  let bands="",nodes="",labels="";
+  rows.forEach((ln,i)=>{
+    if(i%2===1)bands+=`<rect x="0" y="${ln.y}" width="${W}" height="${ln.laneH}" fill="#00000004"/>`;
+    const laneLabel=(key==="methods"||ln.val==="—")?ln.val:entityName(ln.val);
+    labels+=`<text x="${padX}" y="${ln.y+26}" font-size="12" font-weight="700" fill="#78736a" letter-spacing=".04em">${esc(String(laneLabel).toUpperCase())}</text>
+      <text x="${padX}" y="${ln.y+42}" font-size="11" fill="#a39c8f">${ln.items.length} paper${ln.items.length!==1?"s":""}</text>`;
+    ln.items.forEach((p,k)=>{
+      const rr=Math.floor(k/ln.perRow),cc=k%ln.perRow;
+      const x=labelW+padX+cc*gap+18;const ny=ln.y+34+rr*52;
+      pos[p.id]={x,y:ny};
+      nodes+=nodeMarkup(p,x,ny,rad(p));
+      labels+=`<text x="${x+rad(p)+7}" y="${ny+4}" font-size="12" fill="#57534c">${esc(p.title.slice(0,13))}${p.title.length>13?"…":""}</text>`;
+    });
+  });
+  let edges="";
+  if(S.linkShared&&facetOf(key).link){
+    const byVal={};S.corpus.forEach(p=>facetVals(p,key).forEach(v=>{(byVal[v]=byVal[v]||[]).push(p.id);}));
+    const seen=new Set();
+    Object.values(byVal).forEach(grp=>{for(let a=0;a<grp.length;a++)for(let b=a+1;b<grp.length;b++){
+      const pa=pos[grp[a]],pb=pos[grp[b]];if(!pa||!pb)continue;
+      const kk=grp[a]<grp[b]?grp[a]+"|"+grp[b]:grp[b]+"|"+grp[a];if(seen.has(kk))continue;seen.add(kk);
+      const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2-26;
+      edges+=`<path d="M${pa.x} ${pa.y} Q${mx} ${my} ${pb.x} ${pb.y}" fill="none" stroke="var(--accent)" stroke-width="1" opacity=".25"/>`;
+    }});
+  }
+  bands=bands+edges;
+  return `<g transform="${mapTransform()}">${bands}${labels}${nodes}</g>`;
+}
+
+function renderTimeline(W,H){
+  const years=S.corpus.map(p=>p.year).filter(Boolean);
+  const minY=Math.min(...years),maxY=Math.max(...years);
+  const padL=60,padR=60,plotW=W-padL-padR,axisY=H-46;
+  const xOf=yr=>padL+(maxY===minY?plotW/2:(yr-minY)/(maxY-minY)*plotW);
+  // slot stacking: group by year, stack vertically around mid
+  const byYear={};S.corpus.forEach(p=>{(byYear[p.year]=byYear[p.year]||[]).push(p);});
+  const pos={};const midY=axisY/2+10;
+  Object.keys(byYear).forEach(yr=>{
+    const arr=sortPapers(byYear[yr]);
+    arr.forEach((p,i)=>{const off=(i-(arr.length-1)/2)*46;pos[p.id]={x:xOf(+yr),y:midY+off};});
+  });
+  // axis ticks every 2 yrs
+  let axis="";for(let yr=Math.ceil(minY/2)*2;yr<=maxY;yr+=2){const x=xOf(yr);axis+=`<line x1="${x}" y1="${axisY-6}" x2="${x}" y2="${axisY}" stroke="#d8d3c8"/><text x="${x}" y="${axisY+16}" text-anchor="middle" font-size="11" fill="#a39c8f" class="tnum">${yr}</text>`;}
+  axis+=`<line x1="${padL-10}" y1="${axisY}" x2="${W-padR+10}" y2="${axisY}" stroke="#e9e6df"/>`;
+  // edges
+  let edges="";
+  S.corpus.forEach(p=>{p.builds_on.forEach(t=>{const a=pos[t],b=pos[p.id];if(!a||!b)return;
+    const mx=(a.x+b.x)/2;edges+=`<path d="M${a.x} ${a.y} C${mx} ${a.y} ${mx} ${b.y} ${b.x} ${b.y}" fill="none" stroke="#c7beae" stroke-width="1.3" marker-end="url(#arr)" opacity=".85"/>`;});});
+  let nodes="",labels="";
+  S.corpus.forEach(p=>{const q=pos[p.id];nodes+=nodeMarkup(p,q.x,q.y,rad(p));});
+  // label a few (highest in-degree)
+  [...S.corpus].sort((a,b)=>(S.derived.indeg[b.id]||0)-(S.derived.indeg[a.id]||0)).slice(0,4).forEach(p=>{const q=pos[p.id];labels+=`<text x="${q.x+rad(p)+6}" y="${q.y+4}" font-size="12" fill="#57534c">${esc(p.title.slice(0,18))}…</text>`;});
+  return `<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L8 4.5 L0 9 z" fill="#b3a994"/></marker></defs>
+    <g transform="${mapTransform()}">${axis}${edges}${nodes}${labels}</g>`;
+}
+
+let _people=null;
+function renderPeople(W,H){
+  const auth=Object.values(S.derived.authors).filter(a=>S.showExternal||a.internal);
+  const names=new Set(auth.map(a=>a.name));
+  const edges=Object.entries(S.derived.edges).map(([k,w])=>{const[a,b]=k.split("");return{a,b,w};}).filter(e=>names.has(e.a)&&names.has(e.b));
+  // init positions on a circle (deterministic)
+  const N=auth.length;const cx=W/2,cy=H/2;
+  const nodes=auth.map((a,i)=>{const ang=i/N*2*Math.PI;return {...a,x:cx+Math.cos(ang)*Math.min(W,H)*0.3,y:cy+Math.sin(ang)*Math.min(W,H)*0.3,vx:0,vy:0};});
+  const byName={};nodes.forEach(n=>byName[n.name]=n);
+  // O(n^2) force layout
+  const ITER=320;let alpha=1;
+  for(let it=0;it<ITER;it++){
+    alpha*=0.992;
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j];let dx=a.x-b.x,dy=a.y-b.y;let d2=dx*dx+dy*dy||0.01;let d=Math.sqrt(d2);
+      const rep=2600/d2;const fx=dx/d*rep,fy=dy/d*rep;a.vx+=fx;a.vy+=fy;b.vx-=fx;b.vy-=fy;
+    }
+    edges.forEach(e=>{const a=byName[e.a],b=byName[e.b];let dx=b.x-a.x,dy=b.y-a.y;let d=Math.sqrt(dx*dx+dy*dy)||0.01;
+      const target=70;const k=(d-target)*0.02*Math.min(e.w,3);const fx=dx/d*k,fy=dy/d*k;a.vx+=fx;a.vy+=fy;b.vx-=fx;b.vy-=fy;});
+    nodes.forEach(n=>{
+      n.vx+=(cx-n.x)*(n.focal?0.06:0.012);n.vy+=(cy-n.y)*(n.focal?0.06:0.012);
+      n.x+=n.vx*alpha*0.6;n.y+=n.vy*alpha*0.6;n.vx*=0.82;n.vy*=0.82;
+    });
+  }
+  _people={nodes:byName};
+  let edgesvg=edges.map(e=>{const a=byName[e.a],b=byName[e.b];return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#cdc6b8" stroke-width="${Math.min(e.w,4)}" stroke-dasharray="2 3" opacity=".7"/>`;}).join("");
+  let nodesvg=nodes.map(n=>{
+    const r=8+Math.min(n.papers,6)*2.2;
+    const fill=n.internal?"var(--accent)":"#bab0ac";const stroke=n.internal?"#a8543a":"#8a817c";
+    const halo=n.focal?`<circle cx="${n.x}" cy="${n.y}" r="${r+5}" fill="none" stroke="var(--accent)" stroke-width="1.6" opacity=".5"/>`:"";
+    const lbl=(n.papers>=2||n.internal)?`<text x="${n.x+r+5}" y="${n.y+4}" font-size="12" fill="#57534c">${esc(n.name)}</text>`:"";
+    return `<g class="anode" data-author="${esc(n.name)}">${halo}<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>${lbl}</g>`;
+  }).join("");
+  return `<g transform="${mapTransform()}">${edgesvg}${nodesvg}</g>`;
+}
+
+/* ============================ Welcome ============================ */
+const PROMPT=`You are extracting a structured record for Paper Map. Read the paper below and output ONLY a YAML front-matter block (between --- fences) with these fields:
+
+id (kebab-case firstauthor-year-keyword), title, authors (list of {name}), year, venue, doi, url,
+methods (list), modality (one value), datasets (list), tasks (list),
+key_finding (one sentence), builds_on (list of ids this builds on), see_also (list),
+projects (list), status: unverified,
+tags_provenance: list of {field, value, source, quote, by: llm} — one per method / dataset / key_finding, quoting the literal source sentence.
+
+Leave a field out if the text doesn't support it — don't guess. Put a longer summary under a "## Abstract" section after the front-matter.
+
+PAPER:
+"""<paste the paper's text here>"""`;
+const MINFMT=`---
+id: smith-2021-attention-maps
+title: "Attention Maps in Visual Cortex"
+authors:
+  - name: "A. Researcher"
+year: 2021
+venue: "Nature Neuroscience"
+modality: "vision"
+methods: ["fMRI", "MVPA"]
+datasets: ["hcp"]
+tasks: ["decoding"]
+key_finding: "Orientation can be decoded from V1 BOLD signal."
+builds_on: [jones-2018-decoding]
+status: unverified
+---
+
+## Abstract
+We tested whether orientation information is present in early visual cortex...`;
+function helpHTML(){
+  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="helpmodal">
+    <div class="modalhead"><h2>How papers get in</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal">${ICON.close}</button></div>
+    <div class="modalbody">
+      <p style="margin-top:0;font-size:13.5px;color:var(--ink-2)">Every paper is one Markdown file at <code>papers/&lt;id&gt;.md</code>. The schema is the only contract — fill it however you like:</p>
+      <div class="howstep"><div class="hownum">1</div><div><b>By hand</b><p>Copy an existing file in <code>papers/</code> and edit the fields.</p></div></div>
+      <div class="howstep"><div class="hownum">2</div><div><b>With any LLM (Claude or other)</b><p>Paste this prompt plus the paper's text into a model; save what it returns as <code>papers/&lt;id&gt;.md</code>. Every AI-suggested tag carries a source quote so you can verify it fast.</p></div></div>
+      <div class="codeblock"><button class="copybtn" data-act="copyprompt">Copy prompt</button>${esc(PROMPT)}</div>
+      <div class="howstep"><div class="hownum">3</div><div><b>Import from a reference manager</b><p>Have a Zotero / Mendeley / EndNote library? Export it as BibTeX or RIS and import it — each reference becomes a draft paper.</p><button class="btn sm" data-act="import" style="margin-top:7px">${ICON.db} Import .bib / .ris…</button></div></div>
+      <div class="seclabel" style="margin-top:18px">MINIMAL FILE FORMAT</div>
+      <div class="codeblock">${esc(MINFMT)}</div>
+      <div class="seclabel">EDIT IN THE APP</div>
+      <p style="font-size:13px;color:var(--ink-2);margin:4px 0">Open in <b>Chrome or Edge</b>, click <b>Choose folder</b>, pick your papers folder — edits autosave to the files. Other browsers can browse a published map read-only.</p>
+      <div class="seclabel">KEYBOARD</div>
+      <div class="kbdrow"><span>Search</span><span class="kbd">/</span></div>
+      <div class="kbdrow"><span>Go to Library / Review / Map</span><span><span class="kbd">g l</span> <span class="kbd">g r</span> <span class="kbd">g m</span></span></div>
+      <div class="kbdrow"><span>Switch map lens</span><span><span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span></span></div>
+      <div class="kbdrow"><span>Prev / next paper</span><span><span class="kbd">[</span> <span class="kbd">]</span></span></div>
+      <div class="kbdrow"><span>Mark verified / flagged</span><span><span class="kbd">r</span> <span class="kbd">f</span></span></div>
+    </div></div>`;
+}
+/* ============================ BibTeX / RIS import ============================ */
+function _slug(s){return (s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,42);}
+function _flip(a){a=(a||"").replace(/[{}]/g,"").trim();if(a.includes(",")){const parts=a.split(",");return (parts[1].trim()+" "+parts[0].trim()).trim();}return a;}
+function _clean(t){return (t||"").replace(/[{}]/g,"").replace(/\s+/g," ").trim();}
+function _mkRecord(r){
+  return {id:"",title:_clean(r.title)||"(untitled)",authors:(r.authors||[]).filter(a=>a&&a.name),
+    year:r.year,venue:_clean(r.venue),doi:(r.doi||"").replace(/^https?:\/\/(dx\.)?doi\.org\//i,"").trim(),
+    url:(r.url||"").trim(),pdf:"",modality:"",methods:[],facets:{},key_finding:"",abstract:_clean(r.abstract),
+    builds_on:[],see_also:[],projects:[],status:"unverified",tags_provenance:[],notes:"",added:"",updated:""};
+}
+function parseBibtex(text){
+  const out=[];let i=0;const n=text.length;
+  function readVal(){
+    if(text[i]==='{'){let d=0,v="";for(;i<n;i++){const c=text[i];if(c==='{'){if(d>0)v+=c;d++;}else if(c==='}'){d--;if(d===0){i++;break;}v+=c;}else v+=c;}return v;}
+    if(text[i]==='"'){i++;let v="";for(;i<n&&text[i]!=='"';i++)v+=text[i];i++;return v;}
+    let v="";for(;i<n&&text[i]!==','&&text[i]!=='}'&&!/\s/.test(text[i]);i++)v+=text[i];return v;
+  }
+  while(i<n){
+    while(i<n&&text[i]!=='@')i++;if(i>=n)break;i++;
+    let type="";while(i<n&&/[a-zA-Z]/.test(text[i]))type+=text[i++];type=type.toLowerCase();
+    while(i<n&&/\s/.test(text[i]))i++;if(text[i]!=='{'){continue;}i++;
+    if(type==="comment"||type==="preamble"||type==="string"){let d=1;while(i<n&&d>0){if(text[i]==='{')d++;else if(text[i]==='}')d--;i++;}continue;}
+    while(i<n&&text[i]!==','&&text[i]!=='}')i++;
+    const f={};
+    while(i<n){
+      while(i<n&&(/\s/.test(text[i])||text[i]===','))i++;
+      if(text[i]==='}'){i++;break;}
+      let fn="";while(i<n&&/[a-zA-Z0-9_:-]/.test(text[i]))fn+=text[i++];
+      while(i<n&&/\s/.test(text[i]))i++;
+      if(text[i]!=='='){while(i<n&&text[i]!==','&&text[i]!=='}')i++;continue;}
+      i++;while(i<n&&/\s/.test(text[i]))i++;
+      f[fn.toLowerCase()]=readVal();
+    }
+    if(f.title||f.author)out.push(_mkRecord({
+      title:f.title,authors:(f.author||f.editor||"").split(/\s+and\s+/).map(a=>({name:_flip(a)})),
+      year:parseInt((f.year||(f.date||"").slice(0,4)),10)||undefined,
+      venue:f.journal||f.booktitle||f.journaltitle||f.publisher||"",doi:f.doi,url:f.url,abstract:f.abstract}));
+  }
+  return out;
+}
+function parseRis(text){
+  const out=[];let cur=null;
+  for(const line of text.split(/\r?\n/)){
+    const m=line.match(/^([A-Z][A-Z0-9])\s\s-\s?(.*)$/);if(!m)continue;
+    const tag=m[1],v=m[2].trim();
+    if(tag==="TY"){cur={authors:[]};out.push(cur);continue;}
+    if(!cur)continue;
+    if(tag==="AU"||tag==="A1"||tag==="A2"||tag==="A3")cur.authors.push({name:_flip(v)});
+    else if(tag==="TI"||tag==="T1")cur.title=v;
+    else if(tag==="PY"||tag==="Y1")cur.year=parseInt(v,10)||undefined;
+    else if(tag==="JO"||tag==="JF"||tag==="T2"||tag==="JA")cur.venue=v;
+    else if(tag==="DO")cur.doi=v;
+    else if(tag==="UR")cur.url=v;
+    else if(tag==="AB"||tag==="N2")cur.abstract=v;
+  }
+  return out.filter(r=>r.title).map(_mkRecord);
+}
+function parseRefs(text){
+  if(!text||!text.trim())return [];
+  const t=text.trim();
+  let recs= /(^|\n)\s*@\w+\s*\{/.test(t)?parseBibtex(t):/(^|\n)TY\s\s-/.test(t)?parseRis(t):(parseBibtex(t).length?parseBibtex(t):parseRis(t));
+  const existDoi=new Set(S.corpus.filter(p=>p.doi).map(p=>p.doi.toLowerCase()));
+  recs=recs.filter(r=>!(r.doi&&existDoi.has(r.doi.toLowerCase())));
+  const used=new Set(S.corpus.map(p=>p.id));
+  for(const r of recs){
+    const last=((r.authors[0]&&r.authors[0].name)||"").split(/\s+/).pop()||"paper";
+    const kw=((r.title||"").split(/\s+/).find(w=>w.length>3))||"";
+    let base=_slug(last+"-"+(r.year||"")+"-"+kw)||"paper",id=base,k=2;
+    while(used.has(id))id=base+"-"+(k++);used.add(id);r.id=id;
+  }
+  return recs;
+}
+function updateImportCount(){const c=document.getElementById("importcount");if(!c)return;const n=(S._importParsed||[]).length;c.innerHTML=n?`Found <b>${n}</b> reference${n!==1?"s":""}.`:"Nothing parsed yet — paste a .bib/.ris export above.";}
+function importHTML(){
+  const recs=S._importParsed||[];
+  const here=S.mode==="edit"&&S.papersDirHandle;
+  const canPick=!!window.showDirectoryPicker;
+  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="importmodal">
+    <div class="modalhead"><h2>Import references</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal">${ICON.close}</button></div>
+    <div class="modalbody">
+      <p style="margin-top:0;font-size:13.5px;color:var(--ink-2)">Paste a <b>BibTeX</b> (<code>.bib</code>) or <b>RIS</b> (<code>.ris</code>) export — e.g. from Zotero — or choose a file. Each reference becomes a <b>draft</b> paper, ready to enrich.</p>
+      <label class="btn sm" style="display:inline-flex;cursor:pointer"><input type="file" id="importfile" accept=".bib,.ris,.txt,.bibtex" style="display:none">${ICON.folder} Choose a file…</label>
+      <textarea id="importpaste" data-act="importpaste" style="width:100%;min-height:120px;margin-top:10px;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:12px;background:var(--bg)" placeholder="…or paste BibTeX / RIS here">${esc(S._importText||"")}</textarea>
+      <div id="importcount" style="margin-top:10px;font-size:13px;color:var(--ink-2)">${recs.length?`Found <b>${recs.length}</b> reference${recs.length!==1?"s":""}.`:"Nothing parsed yet — paste a .bib/.ris export above."}</div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        ${here?`<button class="btn primary" data-act="importcommit" data-target="here">Add to ${esc(S.dirHandle.name)}/</button>`:(canPick?`<button class="btn primary" data-act="importcommit" data-target="pick">Choose a folder &amp; save…</button>`:"")}
+        <button class="btn" data-act="importcommit" data-target="memory">Preview without saving</button>
+      </div>
+      ${recs.length?`<div style="margin-top:14px;max-height:170px;overflow:auto;border-top:1px solid var(--border-light);padding-top:8px">${recs.slice(0,10).map(r=>`<div style="padding:4px 0;font-size:13px"><span style="color:var(--ink)">${esc(r.title)}</span> <span style="color:var(--ink-3);font-size:12px">· ${esc((r.authors[0]&&r.authors[0].name)||"?")}${r.year?" · "+r.year:""}</span></div>`).join("")}${recs.length>10?`<div style="color:var(--ink-3);font-size:12.5px;padding:4px 0">…and ${recs.length-10} more</div>`:""}</div>`:""}
+    </div></div>`;
+}
+async function importWrite(pdir,recs){for(const p of recs){const h=await pdir.getFileHandle(p.id+".md",{create:true});const w=await h.createWritable();await w.write(serializePaper(p));await w.close();}}
+async function importCommit(target){
+  const recs=S._importParsed||[];
+  if(!recs.length){toast("Paste a .bib or .ris export first");return;}
+  if(target==="memory"){
+    S.corpus=S.corpus.concat(recs);if(S.mode!=="edit")S.mode="memory";
+    S.modal=null;S._importParsed=null;S._importText="";deriveCorpus();S.view="review";render();
+    toast(`Imported ${recs.length} papers (not saved — use “Choose a folder” to keep them)`);return;
+  }
+  try{
+    if(target==="here"){await importWrite(S.papersDirHandle,recs);}
+    else if(target==="pick"){if(!window.showDirectoryPicker){toast("Saving needs Chrome or Edge");return;}let dir;try{dir=await showDirectoryPicker({mode:"readwrite"});}catch(e){return;}S.dirHandle=dir;S.papersDirHandle=await dir.getDirectoryHandle("papers",{create:true});await importWrite(S.papersDirHandle,recs);}
+    S.modal=null;S._importParsed=null;S._importText="";await loadFromDir();S.view="review";render();
+    toast(`Imported ${recs.length} papers to ${S.dirHandle.name}/`);
+  }catch(e){toast("Could not write files: "+((e&&e.message)||e));}
+}
+function modalHTML(){return S.modal==="import"?importHTML():S.modal==="format"?formatHTML():S.modal==="help"?helpHTML():"";}
+/* ============================ Recent maps (folders) ============================ */
+function _idb(){return new Promise((res,rej)=>{const r=indexedDB.open("papermap",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function idbGet(k){try{const db=await _idb();return await new Promise(res=>{const t=db.transaction("kv").objectStore("kv").get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>res(undefined);});}catch(e){return undefined;}}
+async function idbSet(k,v){try{const db=await _idb();await new Promise(res=>{const t=db.transaction("kv","readwrite").objectStore("kv").put(v,k);t.onsuccess=()=>res();t.onerror=()=>res();});}catch(e){}}
+async function saveRecent(handle,title){
+  let recents=(await idbGet("recents"))||[];
+  recents=recents.filter(r=>r.name!==handle.name);
+  recents.unshift({name:handle.name,title:title||handle.name,handle});
+  recents=recents.slice(0,8);await idbSet("recents",recents);S.recents=recents;
+}
+async function openRecent(name){
+  const r=(S.recents||[]).find(x=>x.name===name);if(!r)return;
+  try{
+    let perm=await r.handle.queryPermission({mode:"readwrite"});
+    if(perm!=="granted")perm=await r.handle.requestPermission({mode:"readwrite"});
+    if(perm!=="granted"){toast("Permission needed to open “"+(r.title||name)+"”");return;}
+    S.dirHandle=r.handle;await loadFromDir();
+  }catch(e){toast("Couldn't open “"+(r.title||name)+"” — "+((e&&e.message)||e));}
+}
+function toggleMapMenu(btn){
+  let pop=document.getElementById("mappop");if(pop){pop.remove();return;}
+  pop=document.createElement("div");pop.className="pop";pop.id="mappop";pop.style.left="0";pop.style.right="auto";pop.style.minWidth="230px";
+  const recents=S.recents||[];const cur=S.dirHandle&&S.dirHandle.name;
+  pop.innerHTML=(recents.length?`<div class="popsec">RECENT MAPS</div>`+recents.map(r=>`<button data-act="openrecent" data-name="${esc(r.name)}">${ICON.folder} ${esc(r.title||r.name)}${cur===r.name?' <span style="color:var(--accent-text)">●</span>':''}</button>`).join(""):"")
+    +`<div class="popsec">OPEN</div>`
+    +`<button data-act="pickfolder">${ICON.folder} Open a folder…</button>`
+    +`<button data-act="import">${ICON.db} Import .bib / .ris…</button>`
+    +`<button data-act="format">${ICON.tag} How the files work</button>`
+    +`<button data-act="loaddemo">${ICON.sparkle} Load demo</button>`;
+  btn.parentElement.appendChild(pop);
+}
+/* ============================ File-format reference ============================ */
+const FOLDER_LAYOUT=`my-lab-map/              ← a “map” is one folder
+  papers/                ← one .md per paper
+    smith-2021-tfus.md
+  entities/              ← optional dataset / tool / task records
+    hcp.md
+  papermap.config.json   ← this map’s settings
+  index.json             ← generated; don’t edit by hand`;
+const PAPER_EXAMPLE=`---
+id: smith-2021-tfus
+title: "tFUS modulation of the OCD circuit"
+authors:
+  - name: "J. Smith"
+  - name: "A. Researcher"
+year: 2021
+venue: "Biological Psychiatry"
+doi: 10.1016/j.biopsych.2021.00000
+methods: ["tFUS", "fMRI"]
+modality: "MRI"
+datasets: ["hcp"]
+tasks: ["resting-state"]
+key_finding: "tFUS to the OFC shifted cortico-striatal connectivity."
+builds_on: [doe-2019-ofc]
+see_also: []
+status: unverified
+tags_provenance:
+  - field: method
+    value: "tFUS"
+    quote: "We applied transcranial focused ultrasound to the OFC…"
+    by: llm
+---
+
+## Abstract
+We tested whether low-intensity tFUS to the orbitofrontal cortex…
+
+## Notes
+Check sample size — promising for the MATRIX arm.`;
+const ENTITY_EXAMPLE=`---
+id: hcp
+type: dataset
+name: "Human Connectome Project"
+modality: MRI
+size: "1200 subjects"
+access: open
+url: https://www.humanconnectome.org
+---
+
+## Description
+Large open resting-state + task fMRI dataset.`;
+const CONFIG_EXAMPLE=`{
+  "title": "My Lab's Papers",
+  "facets": [
+    { "key": "methods",  "label": "Methods",  "singular": "method" },
+    { "key": "datasets", "label": "Datasets", "singular": "dataset", "entity": true, "link": true },
+    { "key": "tools",    "label": "Tools",    "singular": "tool",    "entity": true, "link": true }
+  ],
+  "methods_vocab": ["fMRI", "tFUS", "diffusion", "MVPA"],
+  "modality_vocab": ["MRI", "EEG", "behavioral"],
+  "focal_authors": ["A. Researcher"]
+}`;
+function formatHTML(){
+  return `<div class="modalscrim" data-act="closemodal"></div><div class="modal" id="formatmodal">
+    <div class="modalhead"><h2>How the files work</h2><div style="flex:1"></div><button class="iconbtn" data-act="closemodal">${ICON.close}</button></div>
+    <div class="modalbody">
+      <p style="margin-top:0;font-size:13.5px;color:var(--ink-2)">A <b>map is a folder</b> of plain text you own — edit, diff, and version every file. No database, no lock-in.</p>
+      <div class="codeblock">${esc(FOLDER_LAYOUT)}</div>
+      <div class="seclabel">A PAPER · papers/&lt;id&gt;.md</div>
+      <p style="font-size:13px;color:var(--ink-2);margin:4px 0 6px">YAML front-matter (between <code>---</code> fences) holds the structured fields; the body holds the abstract &amp; your notes.</p>
+      <div class="codeblock">${esc(PAPER_EXAMPLE)}</div>
+      <table class="ft"><tr><th>Field</th><th>What it does</th></tr>
+        <tr><td>id · title · authors · year</td><td>Required — identity &amp; byline.</td></tr>
+        <tr><td>venue · doi · url · pdf</td><td>Where to find it (PDF can be a local path).</td></tr>
+        <tr><td>methods · modality</td><td>Drive the Methods lens — grouping &amp; colour.</td></tr>
+        <tr><td>datasets · tasks · …</td><td>Any facet you declare in config — a filter, chips &amp; a Map “Group by”.</td></tr>
+        <tr><td>builds_on</td><td>Directed lineage → Timeline arrows.</td></tr>
+        <tr><td>see_also</td><td>Undirected related links.</td></tr>
+        <tr><td>key_finding</td><td>One-line takeaway shown on cards.</td></tr>
+        <tr><td>status</td><td><code>unverified · verified · flagged</code> — the Review workflow.</td></tr>
+        <tr><td>tags_provenance</td><td>A source quote per tag, so you can trust it.</td></tr>
+      </table>
+      <div class="seclabel">AN ENTITY · entities/&lt;id&gt;.md <span style="font-weight:400;color:var(--ink-3)">(optional)</span></div>
+      <p style="font-size:13px;color:var(--ink-2);margin:4px 0 6px">Any facet value (a dataset, tool, task…) can carry its own record. Referenced values without a file show as light <i>stubs</i> you fill in later.</p>
+      <div class="codeblock">${esc(ENTITY_EXAMPLE)}</div>
+      <div class="seclabel">THE MAP’S SETTINGS · papermap.config.json <span style="font-weight:400;color:var(--ink-3)">(optional)</span></div>
+      <p style="font-size:13px;color:var(--ink-2);margin:4px 0 6px">Title, the facet types, controlled vocabularies, focal authors, colours. Add a new facet (e.g. <code>tools</code>) here with no code.</p>
+      <div class="codeblock">${esc(CONFIG_EXAMPLE)}</div>
+      <p style="font-size:12.5px;color:var(--ink-3);margin-top:14px"><code>index.json</code> is generated from your files for fast loading &amp; published (read-only) maps — you never edit it by hand.</p>
+    </div></div>`;
+}
+function welcomeHTML(){
+  return `<div id="root"><div style="position:fixed;inset:0;display:flex;flex-direction:column">
+    <header class="shell"><div class="wordmark"><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="#fff" stroke="#cf7152" stroke-width="1.6"/><path d="M10 1.5 A8.5 8.5 0 0 0 10 18.5 Z" fill="#cf7152"/></svg><span class="name">Paper Map</span></div></header>
+    <div class="welcome">
+      <h1>Paper Map</h1>
+      <div class="tag">See the shape of a curated set of papers.</div>
+      <div class="wcards">
+        <div class="wcard"><div class="ic">${ICON.folder}</div><h3>Open my papers</h3><p>Pick a folder of paper files on your computer. Edits autosave back to them. <span style="color:var(--ink-3)">(Chrome or Edge)</span></p><button class="btn primary" data-act="pickfolder">Choose folder</button></div>
+        <div class="wcard"><div class="ic">${ICON.sparkle}</div><h3>Explore the demo</h3><p>Load a sample corpus in your browser. No files, nothing saved. Just look around.</p><button class="btn" data-act="loaddemo">Load demo</button></div>
+      </div>
+      <div class="wfoot"><a data-act="import">Import .bib / .ris →</a><a data-act="howin">How papers get in →</a><a data-act="format">How the files work →</a></div>
+      ${(S.recents&&S.recents.length)?`<div style="margin-top:24px"><div style="font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);margin-bottom:11px">RECENT MAPS</div><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:560px">${S.recents.map(r=>`<button class="btn sm" data-act="openrecent" data-name="${esc(r.name)}">${ICON.folder} ${esc(r.title||r.name)}</button>`).join("")}</div></div>`:""}
+      <div class="wnote">◴ Offline · runs entirely on your machine</div>
+    </div></div></div>`;
+}
+
+/* ============================ Runtime: load modes ============================ */
+function loadDemo(){
+  S.config=Object.assign({title:""},CFG_DEMO||{});
+  S.corpus=(DEMO.papers||[]).map(fromRecord);
+  S.entities={};((typeof ENT_DEMO!=="undefined"&&ENT_DEMO&&ENT_DEMO.entities)||[]).forEach(r=>S.entities[r.id]=fromEntityRecord(r));
+  if(!S.config.title&&DEMO.title)S.config.title=DEMO.title;
+  S.mode="demo";deriveCorpus();S.view="library";render();
+  toast("Demo loaded — nothing is saved");
+}
+async function loadFromManifest(){
+  try{
+    const r=await fetch("index.json");if(!r.ok)throw 0;const j=await r.json();
+    S.corpus=(j.papers||[]).map(fromRecord);S.config.title=j.title||S.config.title;
+    // try config
+    try{const c=await fetch("papermap.config.json");if(c.ok)S.config=Object.assign(S.config,await c.json());}catch(e){}
+    // try entities
+    S.entities={};try{const er=await fetch("entities.json");if(er.ok){const ej=await er.json();(ej.entities||[]).forEach(r=>S.entities[r.id]=fromEntityRecord(r));}}catch(e){}
+    S.mode="browse";deriveCorpus();render();
+  }catch(e){/* not served — stay on welcome */}
+}
+async function pickFolder(){
+  if(!window.showDirectoryPicker){toast("Editing needs Chrome or Edge. Try the demo.");return;}
+  let dir;try{dir=await window.showDirectoryPicker({mode:"readwrite"});}catch(e){return;}
+  S.dirHandle=dir;await loadFromDir();
+}
+async function loadFromDir(){
+  const dir=S.dirHandle;const corpus=[];S.fileHandles={};S.fileMeta={};
+  // config
+  try{const cf=await dir.getFileHandle("papermap.config.json");const f=await cf.getFile();S.config=Object.assign({},JSON.parse(await f.text()));}catch(e){S.config={};}
+  // papers dir
+  let pdir=dir;try{pdir=await dir.getDirectoryHandle("papers");}catch(e){pdir=dir;}
+  S.papersDirHandle=pdir;
+  for await(const [name,h] of pdir.entries()){
+    if(h.kind==="file"&&name.endsWith(".md")){
+      const file=await h.getFile();const {fm,sec}=parseFrontMatter(await file.text());
+      const p=normalizePaper(fm,sec);if(!p.id)p.id=name.replace(/\.md$/,"");
+      corpus.push(p);S.fileHandles[p.id]=h;S.fileMeta[p.id]=file.lastModified;
+    }
+  }
+  // entities dir
+  S.entities={};S.entHandles={};S.entDirHandle=null;
+  try{const edir=await dir.getDirectoryHandle("entities");S.entDirHandle=edir;for await(const [name,h] of edir.entries()){
+    if(h.kind==="file"&&name.endsWith(".md")){const ef=await h.getFile();const pr=parseFrontMatter(await ef.text());const e=fromEntityFm(pr.fm,pr.sec);if(!e.id)e.id=name.replace(/\.md$/,"");S.entities[e.id]=e;S.entHandles[e.id]=h;}
+  }}catch(e){}
+  S.corpus=corpus;S.mode="edit";if(!S.config.title)S.config.title=dir.name;
+  try{await saveRecent(dir,S.config.title||dir.name);}catch(e){}
+  deriveCorpus();S.view="library";S.saveState="saved";render();
+  toast(`Loaded ${corpus.length} papers · ${Object.keys(S.entities).length} entities from ${dir.name}/`);
+}
+let _saveTimer=null;
+function scheduleSave(p){
+  if(S.mode!=="edit"){deriveCorpus();return;}
+  S.saveState="saving";deriveCorpus();
+  clearTimeout(_saveTimer);_saveTimer=setTimeout(()=>doSave(p),500);
+}
+async function doSave(p){
+  try{
+    const h=S.fileHandles[p.id];
+    if(h){
+      const cur=await h.getFile();
+      if(S.fileMeta[p.id]&&cur.lastModified>S.fileMeta[p.id]+1000){S.saveState="conflict";renderStatus();return;}
+      const w=await h.createWritable();await w.write(serializePaper(p));await w.close();
+      const nf=await h.getFile();S.fileMeta[p.id]=nf.lastModified;
+    }
+    S.saveState="saved";renderStatus();
+  }catch(e){S.saveState="error";renderStatus();}
+}
+function renderStatus(){const sr=$(".statusread");if(sr)sr.innerHTML=`${saveRead()}<span>·</span><span class="tnum">${S.corpus.length} papers</span><span>·</span><span>◴ Offline</span>`;}
+/* ---- entity editing ---- */
+function serializeEntity(e){
+  const L=["---","id: "+e.id,"type: "+e.type,"name: "+q(e.name)];
+  for(const k in (e.meta||{})){const v=e.meta[k];if(v===""||v==null)continue;L.push(k+": "+(typeof v==="number"?v:q(v)));}
+  L.push("---","");
+  if(e.description)L.push("## Description\n"+e.description,"");
+  return L.join("\n").trim()+"\n";
+}
+let _entSaveTimer=null;
+function scheduleSaveEntity(e){
+  if(S.mode!=="edit"){return;}
+  S.saveState="saving";renderStatus();
+  clearTimeout(_entSaveTimer);_entSaveTimer=setTimeout(()=>doSaveEntity(e),500);
+}
+async function doSaveEntity(e){
+  try{
+    let h=S.entHandles&&S.entHandles[e.id];
+    if(!h){if(!S.entDirHandle)S.entDirHandle=await S.dirHandle.getDirectoryHandle("entities",{create:true});h=await S.entDirHandle.getFileHandle(e.id+".md",{create:true});S.entHandles=S.entHandles||{};S.entHandles[e.id]=h;}
+    const w=await h.createWritable();await w.write(serializeEntity(e));await w.close();
+    S.saveState="saved";renderStatus();
+  }catch(err){S.saveState="error";renderStatus();}
+}
+function curEntity(){return S.entities[S.selectedEntity];}
+function addEntField(){const e=curEntity();if(!e)return;const k=prompt("Field name (e.g. url, modality, size, access, language):");if(k&&k.trim()){e.meta=e.meta||{};if(!(k.trim() in e.meta))e.meta[k.trim()]="";e.status="recorded";render();}}
+
+/* ============================ Mutations ============================ */
+function mutate(p,fn){fn(p);p.updated=new Date().toISOString().slice(0,10);scheduleSave(p);}
+function cycleStatus(p){const order=["unverified","flagged","verified"];mutate(p,x=>{x.status=order[(order.indexOf(x.status)+1)%3];});render();}
+function setStatus(p,st){if(p.status===st)return;mutate(p,x=>{x.status=st;});render();}
+
+/* ============================ Events ============================ */
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+function selPaper(){return S.corpus.find(x=>x.id===S.selectedId);}
+
+function wireShell(){
+  const root=$("#root");
+  root.onclick=onClick;
+  const se=$("#search");if(se){se.oninput=e=>{S.filters.search=e.target.value;if(S.view==="library"){const lw=$("#listwrap");if(lw){const papers=sortPapers(filteredCorpus());lw.innerHTML=papers.length?papers.map(rowHTML).join(""):`<div class="empty"><div style="color:var(--ink-2)">No papers match.</div></div>`;}const sub=$(".subheader .tnum");if(sub)sub.textContent=filteredCorpus().length+" papers";}else if(S.view==="map")renderMap();};}
+}
+function onClick(e){
+  const t=e.target.closest("[data-act],[data-tab],[data-row],[data-lens],[data-opt],[data-facet],[data-facetpick],[data-dens],[data-card],[data-node],[data-author],[data-id]");
+  if(!t)return;
+  const act=t.dataset.act;
+  if(t.dataset.tab){S.view=t.dataset.tab;S.selectedId=null;render();return;}
+  if(t.dataset.lens){S.lens=t.dataset.lens;render();return;}
+  if(t.dataset.facetpick){S.facetKey=t.dataset.facetpick;render();return;}
+  if(t.dataset.row){S.selectedId=t.dataset.row;S.view="library";render();return;}
+  if(t.dataset.node){S.selectedId=t.dataset.node;render();return;}
+  if(t.dataset.opt){const set=filterSet(t.dataset.opt);const v=t.dataset.val;set.has(v)?set.delete(v):set.add(v);render();return;}
+  if(t.dataset.facet){S.collapsedFacets.has(t.dataset.facet)?S.collapsedFacets.delete(t.dataset.facet):S.collapsedFacets.add(t.dataset.facet);render();return;}
+  if(t.dataset.dens){S.density=t.dataset.dens;render();return;}
+  if(t.dataset.card){S.selectedId=t.dataset.card;S.view="library";render();return;}
+  if(t.dataset.id){S.selectedId=t.dataset.id;render();return;}
+  const p=selPaper();
+  switch(act){
+    case "home":S.view="library";S.selectedId=null;render();break;
+    case "pickfolder":pickFolder();break;
+    case "loaddemo":loadDemo();break;
+    case "clearfilters":resetFilters();render();break;
+    case "togglesort":toggleSortMenu(t);break;
+    case "closepanel":S.selectedId=null;render();break;
+    case "openentity":S.selectedEntity=t.dataset.ent;render();break;
+    case "closeentity":S.selectedEntity=null;render();break;
+    case "addentfield":addEntField();break;
+    case "linkshared":S.linkShared=!S.linkShared;render();break;
+    case "rmfacet":if(p){const fk=t.dataset.fk;mutate(p,x=>{x.facets[fk]=(x.facets[fk]||[]).filter(v=>v!==t.dataset.val);});render();}break;
+    case "addfacet":if(p)addFacet(p,t.dataset.fk);break;
+    case "prev":navPaper(-1);break;
+    case "next":navPaper(1);break;
+    case "cyclestatus":if(p)cycleStatus(p);break;
+    case "markreviewed":if(p)setStatus(p,"verified");break;
+    case "goto":break;
+    case "showmap":S.view="map";render();break;
+    case "doi":if(p&&p.doi)window.open("https://doi.org/"+p.doi,"_blank");break;
+    case "pdf":if(p&&p.pdf&&p.pdf.startsWith("http"))window.open(p.pdf,"_blank");break;
+    case "rings":S.showRings=!S.showRings;render();break;
+    case "external":S.showExternal=!S.showExternal;render();break;
+    case "togglelegend":S.legendCollapsed=!S.legendCollapsed;render();break;
+    case "zoomin":zoomBy(1.2);break;
+    case "zoomout":zoomBy(1/1.2);break;
+    case "zoomfit":S.zoom={k:1,tx:0,ty:0};renderMap();break;
+    case "rmmethod":if(p){mutate(p,x=>x.methods=x.methods.filter(m=>m!==t.dataset.val));render();}break;
+    case "addmethod":if(p)addMethod(p);break;
+    case "howin":case "help":S.modal="help";render();break;
+    case "import":S.modal="import";render();break;
+    case "format":S.modal="format";render();break;
+    case "mapmenu":toggleMapMenu(t);break;
+    case "openrecent":openRecent(t.dataset.name);break;
+    case "importcommit":importCommit(t.dataset.target);break;
+    case "closemodal":S.modal=null;render();break;
+    case "copyprompt":navigator.clipboard&&navigator.clipboard.writeText(PROMPT);toast("Enrichment prompt copied");break;
+    case "settings":toast("Settings — coming soon (theme: light, default lens, vocab)");break;
+  }
+}
+function toggleSortMenu(btn){
+  const opts=[["year-desc","Year ↓"],["year-asc","Year ↑"],["title","Title A–Z"],["status","Status"]];
+  let pop=$("#sortpop");if(pop){pop.remove();return;}
+  pop=document.createElement("div");pop.className="pop";pop.id="sortpop";
+  pop.innerHTML=opts.map(([v,l])=>`<button class="${S.sort===v?"on":""}" data-sortval="${v}">${l}</button>`).join("");
+  btn.parentElement.appendChild(pop);
+  pop.onclick=e=>{const b=e.target.closest("[data-sortval]");if(b){S.sort=b.dataset.sortval;render();}};
+}
+function navPaper(d){
+  const list=sortPapers(filteredCorpus());const i=list.findIndex(x=>x.id===S.selectedId);
+  const ni=i+d;if(ni<0||ni>=list.length)return;S.selectedId=list[ni].id;render();
+}
+function addMethod(p){
+  const vocab=(S.config.methods_vocab||[]).filter(m=>!p.methods.includes(m));
+  const v=prompt("Add method"+(vocab.length?" ("+vocab.slice(0,8).join(", ")+"…)":"")+":");
+  if(v&&v.trim()){mutate(p,x=>x.methods.push(v.trim()));render();}
+}
+function addFacet(p,fk){
+  const f=facetOf(fk);const existing=Object.values(S.entities).filter(e=>e.type===(f.singular||fk)).map(e=>e.id);
+  const v=prompt("Add "+(f.singular||fk)+(existing.length?" ("+existing.slice(0,8).join(", ")+"…)":"")+":");
+  if(v&&v.trim()){mutate(p,x=>{x.facets[fk]=x.facets[fk]||[];if(!x.facets[fk].includes(v.trim()))x.facets[fk].push(v.trim());});render();}
+}
+function zoomBy(f){S.zoom.k=Math.max(.3,Math.min(3,S.zoom.k*f));renderMap();}
+
+/* edit fields (delegated input) */
+document.addEventListener("input",e=>{
+  const a=e.target.dataset&&e.target.dataset.act;if(!a)return;
+  if(a==="importpaste"){S._importText=e.target.value;S._importParsed=parseRefs(e.target.value);updateImportCount();return;}
+  if(a==="editentname"||a==="editentdesc"||a==="editentmeta"){const en=curEntity();if(!en)return;
+    if(a==="editentname")en.name=e.target.value;
+    else if(a==="editentdesc")en.description=e.target.value;
+    else if(a==="editentmeta"){en.meta=en.meta||{};en.meta[e.target.dataset.key]=e.target.value;}
+    en.status="recorded";scheduleSaveEntity(en);if(S.mode!=="edit")renderStatus();return;}
+  const p=selPaper();if(!p)return;
+  if(a==="editnotes"){p.notes=e.target.value;scheduleSave(p);renderStatus();}
+  if(a==="editkf"){p.key_finding=e.target.value;scheduleSave(p);renderStatus();}
+});
+
+/* import file chooser */
+document.addEventListener("change",e=>{
+  if(e.target&&e.target.id==="importfile"){const f=e.target.files&&e.target.files[0];if(!f)return;
+    f.text().then(txt=>{S._importText=txt;S._importParsed=parseRefs(txt);if(S.modal==="import")render();});}
+});
+/* provenance hover */
+document.addEventListener("mouseover",e=>{
+  const c=e.target.closest("[data-prov-field]");if(!c)return;const p=selPaper();if(!p)return;
+  const pr=provFor(p,c.dataset.provField,c.dataset.provVal);if(!pr||!pr.quote)return;
+  let pop=$("#provpop");if(!pop){pop=document.createElement("div");pop.id="provpop";pop.className="provpop";document.body.appendChild(pop);}
+  pop.innerHTML=`<div class="q">“${esc(pr.quote)}”</div><div class="m"><span>${esc(pr.by||"?")}</span>${pr.confidence!=null?`<span>conf ${pr.confidence}</span>`:""}<span>${esc(pr.source||"")}</span></div>`;
+  const r=c.getBoundingClientRect();pop.style.left=Math.min(r.left,window.innerWidth-340)+"px";pop.style.top=(r.bottom+8)+"px";pop.style.display="block";
+});
+document.addEventListener("mouseout",e=>{const c=e.target.closest("[data-prov-field]");if(c){const pop=$("#provpop");if(pop)pop.style.display="none";}});
+
+/* map node tooltip */
+function wireMap(){
+  const svg=$("#mapsvg");if(!svg)return;
+  svg.querySelectorAll("[data-node]").forEach(g=>{
+    g.addEventListener("mouseenter",ev=>{const p=S.corpus.find(x=>x.id===g.dataset.node);if(!p)return;showTip(ev,`<b>${esc(p.title)}</b><br>${esc(authorsShort(p))} · ${p.year}`);});
+    g.addEventListener("mousemove",moveTip);g.addEventListener("mouseleave",hideTip);
+  });
+  svg.querySelectorAll("[data-author]").forEach(g=>{
+    g.addEventListener("mouseenter",ev=>{const a=S.derived.authors[g.dataset.author];showTip(ev,`<b>${esc(g.dataset.author)}</b><br>${a.papers} paper${a.papers!==1?"s":""} · ${a.internal?"internal":"external"}`);});
+    g.addEventListener("mousemove",moveTip);g.addEventListener("mouseleave",hideTip);
+  });
+  // pan
+  svg.onmousedown=e=>{if(e.target.closest("[data-node],[data-author]"))return;S._pan={x:e.clientX,y:e.clientY,tx:S.zoom.tx,ty:S.zoom.ty};svg.classList.add("grab");};
+  window.addEventListener("mousemove",panMove);window.addEventListener("mouseup",()=>{S._pan=null;const s=$("#mapsvg");if(s)s.classList.remove("grab");});
+  svg.onwheel=e=>{e.preventDefault();zoomBy(e.deltaY<0?1.08:1/1.08);};
+}
+function panMove(e){if(!S._pan)return;S.zoom.tx=S._pan.tx+(e.clientX-S._pan.x);S.zoom.ty=S._pan.ty+(e.clientY-S._pan.y);const g=$("#mapsvg g");if(g)g.setAttribute("transform",mapTransform());}
+let _tip=null;
+function showTip(e,html){if(!_tip){_tip=document.createElement("div");_tip.className="maptip";document.body.appendChild(_tip);}_tip.innerHTML=html;_tip.style.display="block";moveTip(e);}
+function moveTip(e){if(_tip){_tip.style.left=(e.clientX+12)+"px";_tip.style.top=(e.clientY+12)+"px";}}
+function hideTip(){if(_tip)_tip.style.display="none";}
+
+/* drag kanban */
+document.addEventListener("dragstart",e=>{const c=e.target.closest("[data-card]");if(c){S._drag=c.dataset.card;c.classList.add("dragging");}});
+document.addEventListener("dragend",e=>{const c=e.target.closest("[data-card]");if(c)c.classList.remove("dragging");S._drag=null;});
+document.addEventListener("dragover",e=>{const l=e.target.closest("[data-lane]");if(l){e.preventDefault();l.classList.add("dragover");}});
+document.addEventListener("dragleave",e=>{const l=e.target.closest("[data-lane]");if(l)l.classList.remove("dragover");});
+document.addEventListener("drop",e=>{const l=e.target.closest("[data-lane]");if(l&&S._drag){e.preventDefault();const p=S.corpus.find(x=>x.id===S._drag);if(p)setStatus(p,l.dataset.lane);}});
+
+/* keyboard */
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input,textarea"))return;
+  const k=e.key;
+  if(k==="/"){e.preventDefault();const s=$("#search");if(s)s.focus();return;}
+  if(k==="Escape"){if(S.modal){S.modal=null;render();}else if(S.selectedEntity){S.selectedEntity=null;render();}else if(S.selectedId){S.selectedId=null;render();}return;}
+  if(S._gkey){S._gkey=false;if(k==="l"){S.view="library";render();}if(k==="r"){S.view="review";render();}if(k==="m"){S.view="map";render();}return;}
+  if(k==="g"){S._gkey=true;setTimeout(()=>S._gkey=false,800);return;}
+  if(S.view==="map"){if(k==="1"){S.lens="methods";render();}if(k==="2"){S.lens="timeline";render();}if(k==="3"){S.lens="people";render();}if(k==="+"||k==="="){zoomBy(1.2);}if(k==="-"){zoomBy(1/1.2);}if(k==="0"){S.zoom={k:1,tx:0,ty:0};renderMap();}}
+  if(S.selectedId){const p=selPaper();if(k==="["){navPaper(-1);}if(k==="]"){navPaper(1);}if(k==="r"&&p){setStatus(p,"verified");}if(k==="f"&&p){setStatus(p,"flagged");}}
+  if((S.view==="library")&&(k==="j"||k==="k")){const list=sortPapers(filteredCorpus());let i=list.findIndex(x=>x.id===S.selectedId);i=k==="j"?Math.min(list.length-1,i+1):Math.max(0,i-1);if(list[i]){S.selectedId=list[i].id;render();}}
+});
+window.addEventListener("resize",()=>{if(S.view==="map")renderMap();});
+window.addEventListener("focus",async()=>{ // external-change check
+  if(S.mode!=="edit"||!S.dirHandle)return;
+  // light re-stat could go here; kept minimal for v1
+});
+document.addEventListener("click",e=>{if(!e.target.closest("#sortmenu")){const p=$("#sortpop");if(p)p.remove();}if(!e.target.closest("#mapmenu")){const p=$("#mappop");if(p)p.remove();}},true);
+
+/* ============================ Boot ============================ */
+(async function boot(){
+  S.recents=(await idbGet("recents"))||[];
+  // detect served (published) mode: if index.json fetchable over http(s)
+  if(location.protocol==="http:"||location.protocol==="https:"){loadFromManifest();}
+  render();
+})();
+</script>
+</body>
+</html>
