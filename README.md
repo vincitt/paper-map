@@ -47,7 +47,7 @@ The **?** help panel and the map switcher both link to an in-app **"How the file
 Editing uses the browser's File System Access API, so it needs a **Chromium browser (Chrome or Edge)**.
 
 1. Open `index.html` (double-click, or serve it).
-2. Click **Open folder** and pick this repo's folder.
+2. Click **Choose folder** and pick this repo's folder.
 3. Edits autosave back to the `.md` files. Use the **Review** board to move papers from *Unverified* → *Verified* (or *Flagged* if something needs work).
 
 ## Adding papers
@@ -63,21 +63,21 @@ A minimal record:
 
 ```markdown
 ---
-id: smith-2021-attention-maps
-title: "Attention Maps in Visual Cortex"
+id: smith-2021-sparse-attention
+title: "Sparse Attention for Long Documents"
 authors:
   - name: "A. Researcher"
 year: 2021
-venue: "Nature Neuroscience"
-modality: "vision"
-methods: ["fMRI", "MVPA"]
-key_finding: "Orientation can be decoded from V1 BOLD signal."
-builds_on: [jones-2018-decoding]
+venue: "ICLR"
+modality: "text"
+methods: ["transformer", "self-attention"]
+key_finding: "Sparse attention scales transformers to book-length context."
+builds_on: [vaswani-2017-transformer]
 status: unverified
 ---
 
 ## Abstract
-We tested whether orientation information is present in early visual cortex...
+We study attention patterns that let transformers process long documents...
 ```
 
 Key fields: `id`, `title`, `authors`, `year` are required; `methods`/`modality` drive the Methods lens; `builds_on` (directed) drives the Timeline lineage; `see_also` is undirected; `status` is `unverified | verified | flagged` (the Review workflow; legacy `draft`/`reviewed`/`needs_fixing` are auto-migrated). Map-wide settings (title, controlled vocabularies, focal authors, palette) live in `papermap.config.json`. Full field reference: the in-app **How the files work** panel (open it from the **?** menu or the map switcher).
@@ -120,7 +120,7 @@ Entities show up under the **Entities** tab (browse by type, sorted by usage) an
 2. Enable **GitHub Pages** for the repo (Settings → Pages → deploy from branch).
 3. Share the Pages URL.
 
-> ⚠️ **The `file://` caveat.** A published map loads its data with `fetch()`, which only works over **http(s)** — i.e. when *served* (GitHub Pages or any static host). **Double-clicking a published `index.html` locally will not load the data.** To work locally instead, use **Open folder** (Chromium) which reads the files directly. The bundled demo corpus is inlined into `index.html`, so first-run always works offline.
+> ⚠️ **The `file://` caveat.** A published map loads its data with `fetch()`, which only works over **http(s)** — i.e. when *served* (GitHub Pages or any static host). **Double-clicking a published `index.html` locally will not load the data.** To work locally instead, use **Choose folder** (Chromium) which reads the files directly. The bundled demo corpus is inlined into `index.html`, so first-run always works offline.
 
 ## Regenerating `index.json`
 
@@ -130,7 +130,7 @@ Entities show up under the **Entities** tab (browse by type, sorted by usage) an
 
 ## Browser support
 
-| | Edit (Open folder) | Browse |
+| | Edit (Choose folder) | Browse |
 |---|---|---|
 | Chrome / Edge | ✅ | ✅ |
 | Firefox / Safari | — (browse only) | ✅ |
