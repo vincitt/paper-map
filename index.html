@@ -1215,32 +1215,78 @@ function renderFacet(key,W,H){
     <g transform="${mapTransform()}">${bands}${axis}${edges}${nodes}${labels}</g>`;
 }
 function renderTimeline(W,H){
+  // Timeline lens: x = publication year; nodes spread vertically into modality
+  // swimlanes so the whole canvas is used and builds_on lineage reads as the hero.
   const isYear=y=>typeof y==="number"&&isFinite(y);
-  const years=S.corpus.map(p=>p.year).filter(isYear);
-  if(!years.length)return `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="14" fill="var(--ink-3)">No dated papers to plot on a timeline.</text>`;
+  const dated=S.corpus.filter(p=>isYear(p.year));
+  if(!dated.length)return `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="14" fill="var(--ink-3)">No dated papers to plot on a timeline.</text>`;
+  const years=dated.map(p=>p.year);
   const minY=Math.min(...years),maxY=Math.max(...years);
-  const padL=60,padR=60,plotW=W-padL-padR,axisY=H-46;
+  // x-geometry: leave a left gutter for lane labels, room at bottom for the year axis.
+  const padL=132,padR=58,plotW=Math.max(140,W-padL-padR),top=58,axisY=H-40;
   const xOf=yr=>padL+(maxY===minY?plotW/2:(yr-minY)/(maxY-minY)*plotW);
-  // slot stacking: group by year (dated papers only), stack vertically around mid
-  const byYear={};S.corpus.forEach(p=>{if(!isYear(p.year))return;(byYear[p.year]=byYear[p.year]||[]).push(p);});
-  const pos={};const midY=axisY/2+10;
-  Object.keys(byYear).forEach(yr=>{
-    const arr=sortPapers(byYear[yr]);
-    arr.forEach((p,i)=>{const off=(i-(arr.length-1)/2)*46;pos[p.id]={x:xOf(+yr),y:midY+off};});
+  // Swimlanes by modality (distinct from the Methods lens, which lanes by method).
+  const modOrder=(S.config.modality_vocab||[]).filter(m=>dated.some(p=>p.modality===m));
+  uniq(dated.map(p=>p.modality).filter(Boolean)).forEach(m=>{if(!modOrder.includes(m))modOrder.push(m);});
+  const noneItems=dated.filter(p=>!p.modality);
+  const lanes=modOrder.concat(noneItems.length?["—"]:[]);
+  const laneItems=val=>sortPapers(val==="—"?noneItems:dated.filter(p=>p.modality===val));
+  const plotH=axisY-top,laneH=plotH/Math.max(1,lanes.length);
+  const laneCY=i=>top+i*laneH+laneH/2;
+  // Place each node at (year x, lane centre y); resolve same-lane overlaps by
+  // staggering crowded neighbours alternately above/below the lane centre so the
+  // dense 2013-2021 text band reads (mirrors renderFacet's nudge, two-sided here).
+  const pos={};
+  lanes.forEach((val,i)=>{
+    const cy=laneCY(i);
+    const arr=laneItems(val).slice().sort((a,b)=>(a.year||0)-(b.year||0));
+    arr.forEach(p=>{pos[p.id]={x:xOf(p.year),y:cy};});
+    let dir=1;
+    for(let a=1;a<arr.length;a++)for(let b=0;b<a;b++){
+      const pa=pos[arr[a].id],pb=pos[arr[b].id];
+      const minGap=rad(arr[a])+rad(arr[b])+10;
+      if(Math.abs(pa.x-pb.x)<minGap&&Math.abs(pa.y-pb.y)<26){pa.y=pb.y+dir*30;dir=-dir;}
+    }
   });
-  // axis ticks every 2 yrs
-  let axis="";for(let yr=Math.ceil(minY/2)*2;yr<=maxY;yr+=2){const x=xOf(yr);axis+=`<line x1="${x}" y1="${axisY-6}" x2="${x}" y2="${axisY}" stroke="var(--border-strong)"/><text x="${x}" y="${axisY+16}" text-anchor="middle" font-size="10.5" fill="var(--ink-3)" font-family="var(--mono)" class="tnum">${yr}</text>`;}
-  axis+=`<line x1="${padL-10}" y1="${axisY}" x2="${W-padR+10}" y2="${axisY}" stroke="var(--border)"/>`;
-  // edges
+  // Lane bands + labels.
+  let bands="",laneLabels="";
+  lanes.forEach((val,i)=>{
+    const y0=top+i*laneH;
+    if(i%2===1)bands+=`<rect x="0" y="${y0}" width="${W}" height="${laneH}" fill="var(--lane-band)"/>`;
+    const n=laneItems(val).length;
+    laneLabels+=`<text x="22" y="${laneCY(i)-3}" font-size="11" font-weight="600" fill="var(--ink-3)" letter-spacing=".1em" font-family="var(--mono)">${esc(String(val).toUpperCase())}</text>
+      <text x="22" y="${laneCY(i)+12}" font-size="10" fill="var(--faint)" font-family="var(--mono)">${n} paper${n!==1?"s":""}</text>`;
+  });
+  // Year axis: adaptive tick step (matches renderFacet) so dense ranges don't crowd.
+  let axis="";
+  const step=(maxY-minY)>12?5:(maxY-minY)>4?2:1;
+  for(let yr=Math.ceil(minY/step)*step;yr<=maxY;yr+=step){const x=xOf(yr);axis+=`<line x1="${x}" y1="${top-10}" x2="${x}" y2="${axisY}" stroke="var(--border-light)"/><text x="${x}" y="${axisY+16}" text-anchor="middle" font-size="10.5" fill="var(--ink-3)" font-family="var(--mono)" class="tnum">${yr}</text>`;}
+  axis+=`<line x1="${padL-12}" y1="${axisY}" x2="${W-padR+12}" y2="${axisY}" stroke="var(--border)"/>`;
+  // builds_on lineage edges — the hero of this view: thicker/curved, weight scaled
+  // by the target's in-degree, drawn opaque so descent of ideas reads at a glance.
   let edges="";
   S.corpus.forEach(p=>{p.builds_on.forEach(t=>{const a=pos[t],b=pos[p.id];if(!a||!b)return;
-    const mx=(a.x+b.x)/2;edges+=`<path d="M${a.x} ${a.y} C${mx} ${a.y} ${mx} ${b.y} ${b.x} ${b.y}" fill="none" stroke="var(--edge-line)" stroke-width="1.3" marker-end="url(#arr)" opacity=".9"/>`;});});
-  let nodes="",labels="";
+    const w=2+Math.min(S.derived.indeg[t]||0,6)*0.55;
+    const mx=(a.x+b.x)/2;
+    edges+=`<path d="M${a.x} ${a.y} C${mx} ${a.y} ${mx} ${b.y} ${b.x} ${b.y}" fill="none" stroke="var(--edge-line)" stroke-width="${w.toFixed(2)}" stroke-linecap="round" marker-end="url(#arrt)" opacity=".95"/>`;});});
+  // Nodes.
+  let nodes="";
   S.corpus.forEach(p=>{const q=pos[p.id];if(!q)return;nodes+=nodeMarkup(p,q.x,q.y,rad(p));});
-  // label a few (highest in-degree)
-  S.corpus.forEach(p=>{const q=pos[p.id];if(!q)return;labels+=`<text x="${q.x+rad(p)+6}" y="${q.y+4}" font-size="12" fill="var(--ink-2)">${esc(shortLabel(p))}</text>`;});
-  return `<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L8 4.5 L0 9 z" fill="var(--edge-arrow)"/></marker></defs>
-    <g transform="${mapTransform()}">${axis}${edges}${nodes}${labels}</g>`;
+  // Selective labels: only nodes that anchor lineage (in-degree > 0) get a persistent
+  // label, with collision nudging so the dense band stays legible. Others reveal on hover.
+  let labels="";
+  const labelled=S.corpus.filter(p=>pos[p.id]&&(S.derived.indeg[p.id]||0)>0)
+    .sort((a,b)=>pos[a.id].x-pos[b.id].x||pos[a.id].y-pos[b.id].y);
+  const placed=[];
+  const overlaps=(lx,ly)=>placed.some(o=>Math.abs(o.x-lx)<92&&Math.abs(o.y-ly)<14);
+  labelled.forEach(p=>{const q=pos[p.id],lx=q.x+rad(p)+6,base=q.y+4;
+    // try on the baseline, then nudge down, then up, until the slot is clear
+    let ly=base;
+    for(const off of [0,16,-16,32,-32,48]){if(!overlaps(lx,base+off)){ly=base+off;break;}}
+    placed.push({x:lx,y:ly});
+    labels+=`<text x="${lx}" y="${ly}" font-size="12" font-weight="600" fill="var(--ink-2)" style="pointer-events:none">${esc(shortLabel(p))}</text>`;});
+  return `<defs><marker id="arrt" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L8 4.5 L0 9 z" fill="var(--edge-arrow)"/></marker></defs>
+    <g transform="${mapTransform()}">${bands}${axis}${edges}${nodes}${laneLabels}${labels}</g>`;
 }
 
 let _people=null,_peopleCache=null;
