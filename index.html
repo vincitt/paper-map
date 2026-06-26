@@ -642,7 +642,7 @@ function render(){
     <button class="iconbtn" data-act="help" title="Help" aria-label="Help">${ICON.help}</button>
   </header>
   ${subheader()}
-  <main class="main" id="main" tabindex="-1">${viewHTML()}${S.selectedEntity?entityPanelHTML():""}</main>
+  <main class="main" id="main" tabindex="-1">${viewHTML()}${S.selectedId?panelHTML():""}${S.selectedEntity?entityPanelHTML():""}</main>
   ${S.modal?modalHTML():""}`;
   wireShell();
   manageDialogFocus();
@@ -650,7 +650,7 @@ function render(){
 }
 let _dlgKey=null;
 function manageDialogFocus(){
-  const key=S.modal?("modal:"+S.modal):S.selectedEntity?("ent:"+S.selectedEntity):(S.selectedId&&S.view==="library")?("paper:"+S.selectedId):null;
+  const key=S.modal?("modal:"+S.modal):S.selectedEntity?("ent:"+S.selectedEntity):S.selectedId?("paper:"+S.selectedId):null;
   if(key===_dlgKey)return;
   const wasOpen=!!_dlgKey;_dlgKey=key;
   if(key){
@@ -783,7 +783,7 @@ function libraryHTML(){
   }else{
     list=papers.map(p=>rowHTML(p)).join("");
   }
-  return `<div class="library">${rail}<div class="listwrap" id="listwrap">${list}</div>${S.selectedId?panelHTML():""}</div>`;
+  return `<div class="library">${rail}<div class="listwrap" id="listwrap">${list}</div></div>`;
 }
 function authorsShort(p){
   const n=p.authors.map(a=>a.name);
@@ -1513,7 +1513,7 @@ function onClick(e){
     case "cyclestatus":if(p)cycleStatus(p);break;
     case "markreviewed":if(p)setStatus(p,"verified");break;
     case "goto":break;
-    case "showmap":S.view="map";render();break;
+    case "showmap":S.selectedId=null;S.view="map";render();break;
     case "doi":if(p&&p.doi)window.open("https://doi.org/"+p.doi,"_blank");break;
     case "pdf":if(p&&p.pdf&&p.pdf.startsWith("http"))window.open(p.pdf,"_blank");break;
     case "rings":S.showRings=!S.showRings;render();break;
