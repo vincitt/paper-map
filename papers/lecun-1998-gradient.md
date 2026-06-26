@@ -20,7 +20,7 @@ datasets: [mnist]
 tasks: [image-classification]
 tools: []
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "CNN"
     source: abstract

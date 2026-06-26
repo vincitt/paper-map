@@ -20,7 +20,7 @@ datasets: [google-news]
 tasks: [word-representation]
 tools: []
 status: verified
-tags_provenance:
+tag_evidence:
   - field: method
     value: "word embeddings"
     source: abstract

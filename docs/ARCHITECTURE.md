@@ -401,7 +401,7 @@ they still appear (as stubs) under the Entities tab.
 | Add a new facet/dimension | `papermap.config.json` `facets[]` — usually *no code* |
 | Add a toolbar button / action | emit `data-act` in the relevant `…HTML()`, add a `case` in `onClick` |
 | Change a Map lens | `renderFacet` / `renderTimeline` / `renderPeople` |
-| Tweak the detail panel | `panelHTML` (+ `relItem`, provenance popover) |
+| Tweak the detail panel | `panelHTML` (+ `relItem`, tag-evidence popover) |
 | Change save behavior | `scheduleSave` / `doSave` |
 | Add a new load source | follow `loadFromManifest` / `loadFromDir`, set `S.mode` |
 | Restyle / theme | `<style>` tokens at the top; `MODALITY_DARK`/`SCALE` for data colours |

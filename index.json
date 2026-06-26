@@ -38,7 +38,7 @@
         "Vision line"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "CNN",
@@ -96,7 +96,7 @@
         "Foundations"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "deep belief network",
@@ -150,7 +150,7 @@
         "Vision line"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "dropout",
@@ -212,7 +212,7 @@
         "Language line"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "word embeddings",
@@ -266,7 +266,7 @@
         "Language line"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "LSTM",
@@ -322,7 +322,7 @@
         "Language line"
       ],
       "status": "flagged",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "attention",
@@ -395,7 +395,7 @@
         "Survey/Bridges"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "self-attention",
@@ -462,7 +462,7 @@
         "Language line"
       ],
       "status": "unverified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "masked language modeling",
@@ -530,7 +530,7 @@
         "Language line"
       ],
       "status": "unverified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "in-context learning",
@@ -596,7 +596,7 @@
         "Survey/Bridges"
       ],
       "status": "verified",
-      "tags_provenance": [
+      "tag_evidence": [
         {
           "field": "method",
           "value": "transformer",

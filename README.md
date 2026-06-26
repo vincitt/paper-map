@@ -22,7 +22,7 @@ Your data lives in plain Markdown files you own. Nothing is uploaded; there's no
 - the generated [`index.json`](index.json) manifest
 - the project config [`papermap.config.json`](papermap.config.json)
 
-Known v1.1 follow-ups: deeper in-panel field editing (author rows, provenance editor, in-app lineage-link autocomplete), a full Settings panel and a persistent in-app help entry point (today the help panels open only from the welcome screen / map switcher), on-focus external-change detection, and hiding the status pill in read-only browse mode.
+Known v1.1 follow-ups: deeper in-panel field editing (author rows, source-quote editor, in-app lineage-link autocomplete), full Settings/Help panels, on-focus external-change detection, and hiding the status pill in read-only browse mode.
 
 ---
 
@@ -56,7 +56,7 @@ Every paper is one Markdown file with YAML front-matter at `papers/<id>.md`. The
 
 - **Import from a reference manager** — export your Zotero / Mendeley / EndNote library as **BibTeX** (`.bib`) or **RIS** (`.ris`) and import it (welcome screen → *Import .bib / .ris*, or the **How papers get in** panel). Each reference comes in as *Unverified* (title, authors, year, venue, DOI) and lands in the **Review** queue, ready to enrich. The fastest way to seed a corpus.
 - **By hand** — copy an existing file in `papers/` and edit the fields.
-- **With any LLM** — paste a paper's text plus the enrichment prompt (the **How papers get in** panel has a **Copy prompt** button) into Claude or any model; it returns a ready-to-save record. Every AI-suggested tag carries a **source quote** (provenance) so you can verify it in seconds.
+- **With any LLM** — paste a paper's text plus the enrichment prompt (the **?** help panel has a **Copy prompt** button) into Claude or any model; it returns a ready-to-save record. Every AI-suggested tag carries a **source quote** so you can verify it in seconds.
 - **With a script** — anything that writes the same YAML works.
 
 A minimal record:
