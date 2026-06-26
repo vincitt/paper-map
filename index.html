@@ -292,6 +292,14 @@ nav.tabs button:disabled{opacity:.4;cursor:default}
 .zoomctl button:last-child{border-bottom:none}
 .zoomctl button:hover{background:var(--hover)}
 .maptip{position:fixed;z-index:80;background:#1b2429;color:#eef2f4;border-radius:6px;padding:7px 10px;font-size:12px;max-width:240px;pointer-events:none;box-shadow:var(--shadow-2)}
+.anode{cursor:pointer}
+.anode circle,.anode text{transition:opacity .25s}
+.springpaper{transform-box:fill-box;transform-origin:50% 50%;animation:springUp .5s cubic-bezier(.34,1.56,.5,1) both}
+@keyframes springUp{0%{transform:translate(var(--dx,0),var(--dy,0)) scale(.1);opacity:0}55%{opacity:1}100%{transform:translate(0,0) scale(1);opacity:1}}
+.paperlink{animation:linkdraw .4s ease both}
+@keyframes linkdraw{from{opacity:0}to{opacity:.55}}
+.splbl{animation:lblfade .45s ease both}
+@keyframes lblfade{from{opacity:0}to{opacity:1}}
 text{font-family:var(--font)}
 
 /* ============================ Welcome ============================ */
@@ -628,7 +636,7 @@ function buildIndex(){
 /* ============================ State ============================ */
 const ENT_DEMO = {"schema_version": "1.0", "generated": "2026-06-25T12:00:00Z", "entities": [{"id": "mnist", "type": "dataset", "name": "MNIST", "description": "Handwritten-digit images; the canonical small vision benchmark.", "modality": "vision", "year": 1998, "size": "70k images", "access": "open", "url": "http://yann.lecun.com/exdb/mnist/"}, {"id": "imagenet", "type": "dataset", "name": "ImageNet (ILSVRC)", "description": "Large-scale labelled image database that catalysed deep learning for vision.", "modality": "vision", "year": 2009, "size": "1.2M images / 1000 classes", "access": "open", "url": "https://image-net.org"}, {"id": "google-news", "type": "dataset", "name": "Google News corpus", "description": "Large internal news-text corpus used to train word2vec embeddings.", "modality": "text", "year": 2013, "size": "~100B tokens", "access": "proprietary"}, {"id": "wmt14-enfr", "type": "dataset", "name": "WMT'14 English–French", "description": "Standard machine-translation benchmark, English to French.", "modality": "text", "year": 2014, "size": "36M sentence pairs", "access": "open", "url": "https://www.statmt.org/wmt14/"}, {"id": "wmt14-ende", "type": "dataset", "name": "WMT'14 English–German", "description": "Standard machine-translation benchmark, English to German.", "modality": "text", "year": 2014, "size": "4.5M sentence pairs", "access": "open", "url": "https://www.statmt.org/wmt14/"}, {"id": "bookcorpus", "type": "dataset", "name": "BookCorpus", "description": "Free novels used for unsupervised language-model pretraining.", "modality": "text", "year": 2015, "size": "~800M words", "access": "restricted"}, {"id": "wikipedia", "type": "dataset", "name": "English Wikipedia", "description": "Encyclopaedic text widely used for pretraining.", "modality": "text", "year": 2018, "size": "~2.5B words", "access": "open", "url": "https://dumps.wikimedia.org"}, {"id": "common-crawl", "type": "dataset", "name": "Common Crawl (filtered)", "description": "Web-scale text corpus, filtered, used to train large language models.", "modality": "text", "year": 2020, "size": "~400B tokens", "access": "open", "url": "https://commoncrawl.org"}, {"id": "jft300m", "type": "dataset", "name": "JFT-300M", "description": "Very large internal Google image dataset used for large-scale pretraining.", "modality": "vision", "year": 2017, "size": "~300M images", "access": "proprietary"}, {"id": "image-classification", "type": "task", "name": "Image Classification", "description": "Assign a category label to an image."}, {"id": "representation-learning", "type": "task", "name": "Representation Learning", "description": "Learn reusable feature representations, often without labels."}, {"id": "word-representation", "type": "task", "name": "Word Representation", "description": "Learn dense vector representations of words."}, {"id": "machine-translation", "type": "task", "name": "Machine Translation", "description": "Translate text from one language into another."}, {"id": "language-modeling", "type": "task", "name": "Language Modeling", "description": "Predict the next token in a sequence of text."}, {"id": "language-understanding", "type": "task", "name": "Language Understanding", "description": "Downstream natural-language understanding tasks (e.g. GLUE)."}, {"id": "cuda-convnet", "type": "tool", "name": "cuda-convnet", "description": "Krizhevsky's high-performance CUDA convolutional-network code.", "language": "CUDA/C++", "year": 2012, "url": "https://code.google.com/archive/p/cuda-convnet/"}, {"id": "distbelief", "type": "tool", "name": "DistBelief", "description": "Google's first-generation large-scale distributed deep-learning framework.", "language": "C++", "year": 2012, "access": "proprietary"}, {"id": "theano", "type": "tool", "name": "Theano", "description": "Early Python framework for symbolic math and GPU deep learning.", "language": "Python", "year": 2010, "url": "https://github.com/Theano/Theano"}, {"id": "tensorflow", "type": "tool", "name": "TensorFlow", "description": "Open-source machine-learning framework from Google.", "language": "Python/C++", "year": 2015, "url": "https://www.tensorflow.org"}, {"id": "jax", "type": "tool", "name": "JAX", "description": "NumPy-compatible autodiff + XLA compilation for ML research.", "language": "Python", "year": 2018, "url": "https://github.com/google/jax"}]};
 const S={
-  mode:"welcome", corpus:[], entities:{}, config:{}, view:"library", lens:"methods", facetKey:"methods", linkShared:false, selectedId:null, selectedEntity:null, editing:false,
+  mode:"welcome", corpus:[], entities:{}, config:{}, view:"library", lens:"methods", facetKey:"methods", linkShared:false, selectedId:null, selectedEntity:null, expandedAuthor:null, editing:false,
   filters:{methods:new Set(),modalities:new Set(),statuses:new Set(),projects:new Set(),fx:{},search:""},
   sort:"year-desc", density:"comfortable", showRings:true, showExternal:true, theme:"light", entFilter:"all", focalPick:null,
   zoom:{k:1,tx:0,ty:0}, dirHandle:null, fileHandles:{}, fileMeta:{}, saveState:"saved",
@@ -756,6 +764,7 @@ function activeFilterCount(){const f=S.filters;let n=f.methods.size+f.modalities
 
 /* ============================ Render: shell ============================ */
 function render(){
+  hideTip(); // a re-render orphans the map hover tooltip (its node is destroyed before mouseleave fires)
   const root=$("#root");
   if(S.mode==="welcome"){root.innerHTML=welcomeHTML()+(S.modal?modalHTML():"");root.onclick=onClick;return;}
   const loaded=S.corpus.length>0;
@@ -1105,7 +1114,8 @@ function legendBody(){
     return `<div class="li"><span style="width:12px;height:12px;border-radius:50%;background:var(--accent)"></span>Focal (internal)</div>
       <div class="li"><span style="width:12px;height:12px;border-radius:50%;background:var(--ext-fill)"></span>External collaborator</div>
       <div class="li"><span style="width:14px;height:14px;border-radius:50%;border:1.5px dashed var(--focal-ring)"></span>Focal author (ring)</div>
-      <div class="li" style="margin-top:4px;color:var(--ink-3);border-top:1px solid var(--border-light);padding-top:6px">size = papers</div>`;
+      <div class="li" style="color:var(--ink-3)">size = papers</div>
+      <div class="li" style="margin-top:4px;color:var(--ink-3);border-top:1px solid var(--border-light);padding-top:6px">Click an author to reveal their papers</div>`;
   }
   return S.derived.mods.map(m=>`<div class="li">${modalitySwatch(m,12)}${esc(m)}</div>`).join("")+
     `<div class="li" style="margin-top:4px;color:var(--ink-3);border-top:1px solid var(--border-light);padding-top:6px">size = lineage in-degree</div>`;
@@ -1136,6 +1146,7 @@ function nodeMarkup(p,x,y,r){
 }
 
 function renderMap(){
+  hideTip(); // rebuilding the SVG (zoom/pan/expand) destroys the hovered node before mouseleave fires
   const wrap=$("#mapwrap");if(!wrap)return;
   const W=wrap.clientWidth,H=wrap.clientHeight;
   const svg=$("#mapsvg");svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
@@ -1227,16 +1238,23 @@ function renderTimeline(W,H){
     <g transform="${mapTransform()}">${axis}${edges}${nodes}${labels}</g>`;
 }
 
-let _people=null;
+let _people=null,_peopleCache=null;
 function renderPeople(W,H){
   const auth=Object.values(S.derived.authors).filter(a=>S.showExternal||a.internal);
   const names=new Set(auth.map(a=>a.name));
   const edges=Object.entries(S.derived.edges).map(([k,w])=>{const[a,b]=k.split("");return{a,b,w};}).filter(e=>names.has(e.a)&&names.has(e.b));
-  // init positions on a circle (deterministic)
-  const N=auth.length;const cx=W/2,cy=H/2;
+  const cx=W/2,cy=H/2;
   const pick=S.focalPick||(S.config.focal_authors&&S.config.focal_authors[0])||null; // centered focal author
+  // Layout is deterministic — cache positions so toggling the expanded author doesn't re-settle the network.
+  const sig=(S.showExternal?"x:":"")+W+"x"+H+"|"+(pick||"")+"|"+auth.map(a=>a.name).join("~");
+  let byName;
+  if(_peopleCache&&_peopleCache.sig===sig){
+    byName={};auth.forEach(a=>{const c=_peopleCache.pos[a.name];byName[a.name]={...a,x:c.x,y:c.y};});
+  }else{
+  // init positions on a circle (deterministic)
+  const N=auth.length;
   const nodes=auth.map((a,i)=>{const ang=i/N*2*Math.PI;return {...a,x:cx+Math.cos(ang)*Math.min(W,H)*0.3,y:cy+Math.sin(ang)*Math.min(W,H)*0.3,vx:0,vy:0};});
-  const byName={};nodes.forEach(n=>byName[n.name]=n);
+  byName={};nodes.forEach(n=>byName[n.name]=n);
   // O(n^2) force layout
   const ITER=320;let alpha=1;
   for(let it=0;it<ITER;it++){
@@ -1252,17 +1270,43 @@ function renderPeople(W,H){
       n.x+=n.vx*alpha*0.6;n.y+=n.vy*alpha*0.6;n.vx*=0.82;n.vy*=0.82;
     });
   }
+    const pos={};Object.values(byName).forEach(n=>pos[n.name]={x:n.x,y:n.y});
+    _peopleCache={sig,pos};
+  }
   _people={nodes:byName};
-  let edgesvg=edges.map(e=>{const a=byName[e.a],b=byName[e.b];return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--edge-line)" stroke-width="${Math.min(e.w,3)+0.5}" opacity=".7"/>`;}).join("");
-  let nodesvg=nodes.map(n=>{
+  const exp=S.expandedAuthor&&byName[S.expandedAuthor]?S.expandedAuthor:null;
+  let edgesvg=edges.map(e=>{const a=byName[e.a],b=byName[e.b];return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--edge-line)" stroke-width="${Math.min(e.w,3)+0.5}" opacity="${exp?".18":".7"}"/>`;}).join("");
+  let nodesvg=Object.values(byName).map(n=>{
     const r=13+Math.min(n.papers,8)*4; // size = papers in set (redesign §8)
+    const sel=n.name===exp,dim=exp&&!sel;
     const fill=n.internal?"var(--accent)":"var(--ext-fill)";const stroke=n.internal?"var(--accent-deep)":"var(--ext-stroke)";
-    // Focal authors: dashed gold/amber ring (redesign §8 People lens)
-    const halo=n.focal?`<circle cx="${n.x}" cy="${n.y}" r="${r+5}" fill="none" stroke="var(--focal-ring)" stroke-width="1.6" stroke-dasharray="3.5 3"/>`:"";
-    const lbl=(n.papers>=2||n.internal)?`<text x="${n.x+r+5}" y="${n.y+4}" font-size="12" fill="var(--ink-2)">${esc(n.name)}</text>`:"";
-    return `<g class="anode" data-author="${esc(n.name)}">${halo}<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>${lbl}</g>`;
+    // Focal authors: dashed gold/amber ring; the expanded author gets a solid accent ring (redesign §8 People lens)
+    const halo=sel?`<circle cx="${n.x}" cy="${n.y}" r="${r+6}" fill="none" stroke="var(--accent)" stroke-width="2.4" opacity=".9"/>`
+      :n.focal?`<circle cx="${n.x}" cy="${n.y}" r="${r+5}" fill="none" stroke="var(--focal-ring)" stroke-width="1.6" stroke-dasharray="3.5 3"/>`:"";
+    const lbl=(n.papers>=2||n.internal||sel)?`<text x="${n.x+r+5}" y="${n.y+4}" font-size="12" font-weight="${sel?"700":"400"}" fill="var(--ink-2)">${esc(n.name)}</text>`:"";
+    return `<g class="anode${sel?" sel":""}" data-author="${esc(n.name)}" opacity="${dim?".26":"1"}">${halo}<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>${lbl}</g>`;
   }).join("");
-  return `<g transform="${mapTransform()}">${edgesvg}${nodesvg}</g>`;
+  // Expanded author → spring their papers out in a ring around the node.
+  let fan="";
+  if(exp){
+    const c=byName[exp];
+    const cr=13+Math.min(c.papers,8)*4;
+    const ps=S.corpus.filter(p=>p.authors.some(a=>a.name===exp));
+    const n=ps.length;
+    const R=cr+58+Math.min(n,10)*7;
+    let lines="",pnodes="",plbls="";
+    ps.forEach((p,i)=>{
+      const ang=-Math.PI/2+i/Math.max(n,1)*2*Math.PI;
+      const px=c.x+Math.cos(ang)*R, py=c.y+Math.sin(ang)*R;
+      const dx=(c.x-px).toFixed(1), dy=(c.y-py).toFixed(1);
+      const dly=(i*0.045).toFixed(3);
+      lines+=`<line class="paperlink" x1="${c.x}" y1="${c.y}" x2="${px}" y2="${py}" stroke="var(--accent)" stroke-width="1.3" style="animation-delay:${dly}s"/>`;
+      pnodes+=`<g class="springpaper" style="--dx:${dx}px;--dy:${dy}px;animation-delay:${dly}s">${nodeMarkup(p,px,py,rad(p))}</g>`;
+      plbls+=`<text class="splbl" x="${px}" y="${py-rad(p)-6}" text-anchor="middle" font-size="10.5" fill="var(--ink-2)" style="animation-delay:${(+dly+0.12).toFixed(3)}s">${esc(shortLabel(p))}</text>`;
+    });
+    fan=lines+pnodes+plbls;
+  }
+  return `<g transform="${mapTransform()}">${edgesvg}${nodesvg}${fan}</g>`;
 }
 
 /* ============================ Welcome ============================ */
@@ -1692,8 +1736,9 @@ function onClick(e){
   const t=e.target.closest("[data-act],[data-tab],[data-row],[data-lens],[data-opt],[data-facet],[data-facetpick],[data-entseg],[data-dens],[data-card],[data-node],[data-author],[data-id]");
   if(!t)return;
   const act=t.dataset.act;
-  if(t.dataset.tab){S.view=t.dataset.tab;S.selectedId=null;S.selectedEntity=null;render();return;}
-  if(t.dataset.lens){S.lens=t.dataset.lens;render();return;}
+  if(t.dataset.author){S.expandedAuthor=S.expandedAuthor===t.dataset.author?null:t.dataset.author;renderMap();return;}
+  if(t.dataset.tab){S.view=t.dataset.tab;S.selectedId=null;S.selectedEntity=null;S.expandedAuthor=null;render();return;}
+  if(t.dataset.lens){S.lens=t.dataset.lens;S.expandedAuthor=null;render();return;}
   if(t.dataset.facetpick){S.facetKey=t.dataset.facetpick;render();return;}
   if(t.dataset.entseg){S.entFilter=t.dataset.entseg;render();return;}
   if(t.dataset.row){S.selectedId=t.dataset.row;S.view="library";render();return;}
@@ -1841,10 +1886,10 @@ document.addEventListener("keydown",e=>{
   if(e.target.matches("input,textarea"))return;
   const k=e.key;
   if(k==="/"){e.preventDefault();const s=$("#search");if(s)s.focus();return;}
-  if(k==="Escape"){if(S.modal){S.modal=null;render();}else if(S.selectedEntity){S.selectedEntity=null;render();}else if(S.selectedId){S.selectedId=null;render();}return;}
+  if(k==="Escape"){if(S.modal){S.modal=null;render();}else if(S.selectedEntity){S.selectedEntity=null;render();}else if(S.selectedId){S.selectedId=null;render();}else if(S.expandedAuthor){S.expandedAuthor=null;renderMap();}return;}
   if(S._gkey){S._gkey=false;if(k==="l"){S.view="library";render();}if(k==="r"){S.view="review";render();}if(k==="m"){S.view="map";render();}return;}
   if(k==="g"){S._gkey=true;setTimeout(()=>S._gkey=false,800);return;}
-  if(S.view==="map"){if(k==="1"){S.lens="methods";render();}if(k==="2"){S.lens="timeline";render();}if(k==="3"){S.lens="people";render();}if(k==="+"||k==="="){zoomBy(1.2);}if(k==="-"){zoomBy(1/1.2);}if(k==="0"){S.zoom={k:1,tx:0,ty:0};renderMap();}}
+  if(S.view==="map"){if(k==="1"){S.lens="methods";S.expandedAuthor=null;render();}if(k==="2"){S.lens="timeline";S.expandedAuthor=null;render();}if(k==="3"){S.lens="people";render();}if(k==="+"||k==="="){zoomBy(1.2);}if(k==="-"){zoomBy(1/1.2);}if(k==="0"){S.zoom={k:1,tx:0,ty:0};renderMap();}}
   if(S.selectedId){const p=selPaper();if(k==="["){navPaper(-1);}if(k==="]"){navPaper(1);}if(k==="r"&&p){setStatus(p,"verified");}if(k==="f"&&p){setStatus(p,"flagged");}}
   if((S.view==="library")&&(k==="j"||k==="k")){const list=sortPapers(filteredCorpus());let i=list.findIndex(x=>x.id===S.selectedId);i=k==="j"?Math.min(list.length-1,i+1):Math.max(0,i-1);if(list[i]){S.selectedId=list[i].id;render();}}
 });
